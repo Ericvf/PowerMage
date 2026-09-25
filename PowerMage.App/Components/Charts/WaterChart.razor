@@ -1,20 +1,22 @@
 ﻿@inject DeviceRepository deviceRepository
 
-<h4 class="water-color">@Math.Round(totalWater, 3) l3</h4>
-<h6>Water meter</h6>
+<div class="chartblock">
+    <h4 class="water-color">@Math.Round(totalWater, 3) l3</h4>
+    <h6>Water meter</h6>
 
-@if (IsLoading)
-{
-    <p>Loading...</p>
-}
-else if (chartData.Count() == 0)
-{
-    <p>No data found.</p>
-}
-else
-{
-    <EnergyChart Day="Day" GetChartPoints="GetChartPoints" GetMaxValues="GetMaxWaterConsumption" CssColorClass="water" />
-}
+    @if (IsLoading)
+    {
+        <p>Loading...</p>
+    }
+    else if (chartData.Count() == 0)
+    {
+        <p>No data found.</p>
+    }
+    else
+    {
+        <EnergyChart Day="Day" GetChartPoints="GetChartPoints" GetMaxValues="GetMaxWaterConsumption" CssColorClass="water" />
+    }
+</div>
 
 @code {
     [Parameter]

@@ -17,37 +17,41 @@
         <li> @device.HostName </li>
         <li> @device.Port </li>
         <li> @device.ServiceName </li>
-        <ul>
-        @foreach (var ip in device.Addresses)
-        {
-            <li> @ip </li>
-        }
-        </ul>
+        <li>
+            <ul>
+                @foreach (var ip in device.Addresses)
+                {
+                    <li> @ip </li>
+                }
+            </ul>
+        </li>
         <button @onclick="() => AddClick(device)">Add Device</button>
     </ul>
 }
 
 @code {
     private readonly List<HomeWizardDevice> devices = [];
-
+    private IEnumerable<DeviceModel> existingDevices = new List<DeviceModel>();
     private CancellationTokenSource? cancellationTokenSource;
 
-    protected override void OnInitialized()
+    protected async override void OnInitialized()
     {
+        existingDevices = await deviceRepository.GetDevices();
+
         Discovery.DeviceDiscovered += OnDeviceDiscovered;
 
         cancellationTokenSource = new CancellationTokenSource();
 
-        _ = Discovery.Discover(
-            cancellationTokenSource.Token);
+        _ = Discovery.Discover(cancellationTokenSource.Token);
     }
 
-    private void OnDeviceDiscovered(
-       object? sender,
-       HomeWizardDevice device)
+    private void OnDeviceDiscovered(object? sender, HomeWizardDevice device)
     {
         _ = InvokeAsync(() =>
         {
+            if (existingDevices.Any(d => d.Serial.Equals(device.Serial, StringComparison.OrdinalIgnoreCase)))
+                return;
+
             var existingIndex =
                 devices.FindIndex(
                     x => x.Serial.Equals(
@@ -63,17 +67,8 @@
         });
     }
 
-    public void Dispose()
-    {
-        Discovery.DeviceDiscovered -= OnDeviceDiscovered;
-
-        cancellationTokenSource?.Cancel();
-        cancellationTokenSource?.Dispose();
-    }
-
     private async Task AddClick(HomeWizardDevice device)
     {
-        // Add the device to the repository
         await deviceRepository.AddDevice(new DeviceModel()
         {
             Serial = device.Serial,
@@ -83,5 +78,13 @@
             IpAddress = device.Addresses.First().ToString(),
             Track = 1
         });
+    }
+
+    public void Dispose()
+    {
+        Discovery.DeviceDiscovered -= OnDeviceDiscovered;
+
+        cancellationTokenSource?.Cancel();
+        cancellationTokenSource?.Dispose();
     }
 }

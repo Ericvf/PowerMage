@@ -2,6 +2,8 @@
 @using PowerMage.Components.Charts
 @inject DeviceRepository deviceRepository
 
+<h2>Power Mage⚡️</h2>
+
 @if (IsLoading)
 {
     <p>Loading...</p>
@@ -29,6 +31,10 @@ else
         }
     }
 }
+
+<footer>
+    <img src="/appbyfex.png" />
+</footer>
 
 @code {
     private DateTime Today = DateTime.Today;

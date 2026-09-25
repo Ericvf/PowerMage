@@ -1,21 +1,22 @@
 ﻿@inject DeviceRepository deviceRepository
 
-<h4>@Math.Round(totalPowerImportKwh, 2) Kwh</h4>
+<div class="chartblock">
+    <h4>@Math.Round(totalPowerImportKwh, 2) Kwh</h4>
+    <h6>@Device?.DisplayName</h6>
 
-<h6>@Device?.DisplayName</h6>
-
-@if (IsLoading)
-{
-    <p>Loading...</p>
-}
-else if (chartData.Count() == 0)
-{
-    <p>No data found.</p>
-}
-else
-{
-    <EnergyChart Day="Day" GetChartPoints="GetChartPoints" GetMaxValues="GetMaxWatts" />
-}
+    @if (IsLoading)
+    {
+        <p>Loading...</p>
+    }
+    else if (chartData.Count() == 0)
+    {
+        <p>No data found.</p>
+    }
+    else
+    {
+        <EnergyChart Day="Day" GetChartPoints="GetChartPoints" GetMaxValues="GetMaxWatts" />
+    }
+</div>
 
 @code {
     [Parameter]
