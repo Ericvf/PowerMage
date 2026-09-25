@@ -1,0 +1,303 @@
+﻿@using System.Globalization
+
+<div class="energy-chart">
+    <div class="chart-plot">
+        <svg class="energy-chart-svg"
+             viewBox="0 0 1440 360"
+             preserveAspectRatio="none"
+             aria-hidden="true">
+
+            <g class="grid">
+
+                @for (var watt = YAxisStep; watt <= MaxValue; watt += YAxisStep)
+                {
+                    var y = Math.Round(Y(watt));
+
+                    <line x1="@ChartLeft"
+                          y1="@y"
+                          x2="@ChartRight"
+                          y2="@y"
+                          class="horizontal-grid" />
+                }
+
+                @for (var minute = 60; minute <= MinutesPerDay; minute += 60)
+                {
+                    var x = Math.Round(X(minute));
+                    <line x1="@x"
+                          y1="@ChartTop"
+                          x2="@x"
+                          y2="@ChartBottom"
+                          class="hour-grid" />
+                }
+
+            </g>
+
+            <line class="axis"
+                  x1="@ChartLeft"
+                  y1="@ChartBottom"
+                  x2="@ChartRight"
+                  y2="@ChartBottom" />
+
+            <line class="axis"
+                  x1="@ChartLeft"
+                  y1="@ChartTop"
+                  x2="@ChartLeft"
+                  y2="@ChartBottom" />
+
+            <g class="data">
+                <defs>
+                    <linearGradient id="power-fill"
+                                    x1="0"
+                                    y1="0"
+                                    x2="0"
+                                    y2="1">
+                        <stop offset="0%"
+                              stop-color="rgb(177, 0, 255)"
+                              stop-opacity="0.75" />
+
+                        <stop offset="100%"
+                              stop-color="#200058"
+                              stop-opacity="0.25" />
+                    </linearGradient>
+                    <linearGradient id="import-fill"
+                                    x1="0"
+                                    y1="0"
+                                    x2="0"
+                                    y2="1">
+                        <stop offset="0%"
+                              stop-color="#04DE71"
+                              stop-opacity="0.75" />
+
+                        <stop offset="100%"
+                              stop-color="#04DE71"
+                              stop-opacity="0.25" />
+                    </linearGradient>      
+                    <linearGradient id="gas-fill"
+                                                       x1="0"
+                                                       y1="0"
+                                                       x2="0"
+                                                       y2="1">
+                    <stop offset="0%"
+                              stop-color="#E60067"
+                          stop-opacity="0.75" />
+
+                    <stop offset="100%"
+                              stop-color="#E60067"
+                          stop-opacity="0.25" />
+                </linearGradient>
+                </defs>
+
+                @foreach (var segment in GetSegments())
+                {
+                    if (segment.Count >= 2)
+                    {
+                        <path d="@BuildFilledPath(segment)" class="@($"{CssColorClass}-fill")" />
+                        <path d="@BuildSmoothPath(segment)" class="@($"{CssColorClass}-line")" />
+                    }
+                }
+            </g>
+        </svg>
+
+        <div class="x-labels">
+            @for (var minute = 0; minute < MinutesPerDay; minute += 120)
+            {
+                var percentage = ChartXPercentage(minute);
+
+                <span style="left: @(percentage.ToString("0.###", CultureInfo.InvariantCulture))%">
+                    @TimeLabel(minute)
+                </span>
+            }
+        </div>
+    </div>
+
+    <div class="y-labels">
+        @for (double value = 0; value <= MaxValue; value += YAxisStep)
+        {
+            var percentage = ChartYPercentage(value);
+
+            <span style="top: @(percentage.ToString("0.###", CultureInfo.InvariantCulture))%">
+                @value.ToString("0.###", CultureInfo.InvariantCulture)
+            </span>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public DateTime Day { get; set; }
+
+    [Parameter]
+    public Func<List<ChartPoint>>? GetChartPoints { get; set; }
+
+    [Parameter]
+    public Func<double>? GetMaxValues { get; set; }
+
+    [Parameter]
+    public string CssColorClass { get; set; } = "power";
+
+    private double MaxValue => GetMaxValues != null ? GetMaxValues() : 0d;
+    private double YAxisStep => MaxValue / 10;
+
+    private const int MinutesPerDay = 1440;
+    private const double ChartLeft = 0;
+    private const double ChartRight = 1425;
+    private const double ChartTop = 15;
+    private const double ChartBottom = 310;
+
+    private double X(double minute)
+    {
+        return ChartLeft + (minute / MinutesPerDay) * (ChartRight - ChartLeft);
+    }
+
+    private double Y(double watts)
+    {
+        watts = Math.Clamp(watts, 0, MaxValue);
+
+        return ChartBottom -
+               (watts / MaxValue) *
+               (ChartBottom - ChartTop);
+    }
+
+    private double ChartXPercentage(double minute)
+    {
+        return X(minute) / 1440.0 * 100.0;
+    }
+
+    private double ChartYPercentage(double watts)
+    {
+        return Y(watts) / 360.0 * 100.0;
+    }
+
+    private string TimeLabel(int minute)
+    {
+        var time = TimeSpan.FromMinutes(minute);
+
+        return $"{(int)time.TotalHours:00}:{time.Minutes:00}";
+    }
+
+    private List<List<ChartPoint>> GetSegments()
+    {
+        if (GetChartPoints == null)
+            return new List<List<ChartPoint>>();
+
+        var points = GetChartPoints();
+
+        var segments = new List<List<ChartPoint>>();
+        if (points.Count == 0)
+            return segments;
+
+        var current = new List<ChartPoint>();
+        foreach (var point in points)
+        {
+            if (current.Count == 0)
+            {
+                current.Add(point);
+                continue;
+            }
+
+            var previous = current[^1];
+            if (point.Minute - previous.Minute > 5.01)
+            {
+                segments.Add(current);
+
+                current = new List<ChartPoint>();
+            }
+
+            current.Add(point);
+        }
+
+        if (current.Count > 0)
+            segments.Add(current);
+
+        return segments;
+    }
+
+    private string BuildFilledPath(List<ChartPoint> points)
+    {
+        if (points.Count < 2)
+            return string.Empty;
+
+        var line = BuildSmoothPath(points);
+
+        var firstX = X(points[0].Minute);
+        var lastX = X(points[^1].Minute);
+
+        return $"{line} " +
+               $"L {F(lastX)} {F(ChartBottom)} " +
+               $"L {F(firstX)} {F(ChartBottom)} Z";
+    }
+
+    private string BuildSmoothPath(List<ChartPoint> points)
+    {
+        if (points.Count < 2)
+            return string.Empty;
+
+
+        var path = new System.Text.StringBuilder();
+
+
+        var first = points[0];
+
+
+        path.Append(
+            $"M {F(X(first.Minute))} {F(Y(first.Watts))}");
+
+
+        for (var i = 0; i < points.Count - 1; i++)
+        {
+            var p0 = i > 0
+                ? points[i - 1]
+                : points[i];
+
+            var p1 = points[i];
+
+            var p2 = points[i + 1];
+
+            var p3 = i + 2 < points.Count
+                ? points[i + 2]
+                : p2;
+
+
+            /*
+             * Catmull-Rom -> cubic Bézier.
+             *
+             * This gives us a smooth curve while keeping
+             * the curve passing through the actual data points.
+             */
+            var cp1X =
+                p1.Minute +
+                (p2.Minute - p0.Minute) / 6.0;
+
+            var cp1Y =
+                p1.Watts +
+                (p2.Watts - p0.Watts) / 6.0;
+
+
+            var cp2X =
+                p2.Minute -
+                (p3.Minute - p1.Minute) / 6.0;
+
+            var cp2Y =
+                p2.Watts -
+                (p3.Watts - p1.Watts) / 6.0;
+
+
+            path.Append(
+                $" C " +
+                $"{F(X(cp1X))} {F(Y(cp1Y))}, " +
+                $"{F(X(cp2X))} {F(Y(cp2Y))}, " +
+                $"{F(X(p2.Minute))} {F(Y(p2.Watts))}");
+        }
+
+
+        return path.ToString();
+    }
+
+    private static string F(double value)
+    {
+        return value.ToString(
+            "0.##",
+            CultureInfo.InvariantCulture);
+    }
+
+}

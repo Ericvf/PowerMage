@@ -40,3 +40,129 @@ h1:focus {
 #blazor-error-ui {
     display: none;
 }
+
+/* Chart */
+h4, h6 {
+    margin: 0;
+}
+
+h4 {
+    color: rgb(177, 0, 255);
+}
+
+h6 {
+    color: white;
+    font-size: 0.8em;
+}
+
+.energy-chart {
+    position: relative;
+    display: grid;
+    grid-template-columns: 50px minmax(0, 1fr);
+    height: 300px;
+    background: black;
+    border-color: var(--pico-muted-border-color);
+    border-radius: 5px;
+    margin: 10px;
+}
+
+.chart-plot {
+    position: relative;
+    min-width: 0;
+    height: 100%;
+}
+
+.energy-chart-svg {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+}
+
+.hour-grid {
+    stroke: var(--pico-muted-border-color);
+    stroke-width: 1;
+    opacity: 1;
+    vector-effect: non-scaling-stroke;
+}
+
+.horizontal-grid {
+    stroke: var(--pico-muted-border-color);
+    stroke-width: 1;
+    opacity: 1;
+    vector-effect: non-scaling-stroke;
+}
+
+
+.axis {
+    stroke: var(--pico-contrast);
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+}
+
+
+.power-line {
+    fill: none;
+    stroke: rgb(177, 0, 255);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
+}
+
+.power-fill {
+    fill: url(#power-fill);
+    stroke: none;
+}
+
+.gas-color {
+    color: #E60067;
+}
+
+.gas-line {
+    fill: none;
+    stroke: #E60067;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
+}
+
+.gas-fill {
+    fill: url(#gas-fill);
+    stroke: none;
+}
+
+.y-labels {
+    position: relative;
+    grid-column: 1;
+    grid-row: 1;
+    pointer-events: none;
+    color: var(--pico-muted-color);
+    font-size: 12px;
+}
+
+    .y-labels span {
+        position: absolute;
+        left: 0;
+        transform: translateY(-50%);
+        white-space: nowrap;
+        padding-left: 5px;
+    }
+
+
+.x-labels {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    color: var(--pico-muted-color);
+    font-size: 12px;
+}
+
+    .x-labels span {
+        position: absolute;
+        bottom: 15px;
+        white-space: nowrap;
+    }

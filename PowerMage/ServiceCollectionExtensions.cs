@@ -5,8 +5,7 @@ using PowerMage.Services;
 
 public static class ServiceCollectionExtensions
 {
-    public static IServiceCollection AddPowerMage(
-        this IServiceCollection services)
+    public static IServiceCollection AddPowerMage(this IServiceCollection services)
     {
         services
             .AddSingleton<SqlLiteService>()

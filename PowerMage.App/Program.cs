@@ -1,5 +1,4 @@
 using PowerMage.Components;
-using PowerMage.Repository;
 using PowerMage.Services;
 
 var builder = WebApplication.CreateBuilder(args);

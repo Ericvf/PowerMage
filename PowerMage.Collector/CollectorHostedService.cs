@@ -25,25 +25,34 @@ public sealed class CollectorHostedService(DeviceRepository deviceRepository, De
                         continue;
                     }
 
-                    var measurement = await deviceClient.GetMeasurement(device, stoppingToken);
-                    if (measurement is null)
+                    if (device.ProductType == "HWE-SKT")
                     {
-                        logger.LogWarning("No measurement returned by {DisplayName}", device.DisplayName);
-                        continue;
+                        var measurement = await deviceClient.GetSKTMeasurement(device, stoppingToken);
+                        if (measurement is null)
+                        {
+                            logger.LogWarning("No measurement returned by {DisplayName}", device.DisplayName);
+                            continue;
+                        }
+
+                        await deviceRepository.AddSKTDeviceEnergy(measurement);
+                    }
+                    else if (device.ProductType == "HWE-P1")
+                    {
+                        var measurement = await deviceClient.GetP1Measurement(device, stoppingToken);
+                        if (measurement is null)
+                        {
+                            logger.LogWarning("No measurement returned by {DisplayName}", device.DisplayName);
+                            continue;
+                        }
+                        await deviceRepository.AddP1DeviceEnergy(measurement);
+
+                    }
+                    else
+                    {
+                        logger.LogWarning("Unsupported product type {ProductType} for device {DisplayName}", device.ProductType, device.DisplayName);
                     }
 
-                    await deviceRepository.AddDeviceEnergy(measurement);
-
-
-                    //if (device.Id == 1)
-                    //{
-                    //    foreach (var deviceEnergy in data)
-                    //    {
-                    //        Console.WriteLine($"Device: {device.DisplayName}, Interval: {DateTimeOffset.FromUnixTimeSeconds(deviceEnergy.IntervalEndUnix).UtcDateTime.ToLocalTime()}, Avg Power: {deviceEnergy.AvgActivePowerW}, SampleCount: {deviceEnergy.SampleCount}");
-                    //    }
-                    //}
                 }
-
                 await Task.Delay(TimeSpan.FromSeconds(15), stoppingToken);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)

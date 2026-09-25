@@ -1,0 +1,90 @@
+﻿@inject DeviceRepository deviceRepository
+
+<h4>@Math.Round(totalPowerImportKwh, 2) Kwh</h4>
+
+<h6>@Device?.DisplayName</h6>
+
+@if (IsLoading)
+{
+    <p>Loading...</p>
+}
+else if (chartData.Count() == 0)
+{
+    <p>No data found.</p>
+}
+else
+{
+    <EnergyChart Day="Day" GetChartPoints="GetChartPoints" GetMaxValues="GetMaxWatts" />
+}
+
+@code {
+    [Parameter]
+    public DateTime Day { get; set; }
+
+    [Parameter]
+    public DeviceModel? Device { get; set; }
+
+    private IEnumerable<DeviceSKTEnergyAggregate> chartData = [];
+    private double totalPowerImportKwh = 0;
+    private bool IsLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            if (Device == null)
+                return;
+
+            var now = DateTime.UtcNow;
+            var today = now.Date;
+
+            var chartDataTask = deviceRepository.GetSKTDeviceEnergyAggregates(Device.Id,today,now,CancellationToken.None);
+            var totalPowerImportKwhTask = deviceRepository.GetTotalPowerSKT(Device.Id,today,now,CancellationToken.None);
+
+            await Task.WhenAll(chartDataTask, totalPowerImportKwhTask); 
+
+            chartData = chartDataTask.Result;
+            totalPowerImportKwh = totalPowerImportKwhTask.Result;
+    }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+
+    private List<ChartPoint> GetChartPoints()
+    {
+        var dayStartUnix = new DateTimeOffset(Day).ToUnixTimeSeconds();
+        var dayEndUnix = dayStartUnix + 86400;
+
+        var points = chartData
+            .Where(x =>
+                x.AvgActivePowerW.HasValue &&
+                x.IntervalStartUnix >= dayStartUnix &&
+                x.IntervalStartUnix < dayEndUnix)
+
+            .Select(x =>
+            {
+                var minute =
+                    (x.IntervalStartUnix - dayStartUnix) / 60.0;
+
+                return new ChartPoint(
+                    minute,
+                    x.AvgActivePowerW!.Value);
+            })
+
+            .OrderBy(x => x.Minute)
+            .ToList();
+
+        return points;
+    }
+
+    private double GetMaxWatts()
+    {
+        return chartData.Where(x => x.AvgActivePowerW.HasValue)
+            .Select(x => x.AvgActivePowerW!.Value)
+            .DefaultIfEmpty(0)
+            .Max();
+    }
+}

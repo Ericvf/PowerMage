@@ -1,22 +1,28 @@
-﻿@page "/Dashboard"
+﻿@page "/"
+@using PowerMage.Components.Charts
 @inject DeviceRepository deviceRepository
 
 @if (IsLoading)
 {
     <p>Loading...</p>
 }
-else if (DeviceData.Count == 0)
+else if (Devices.Count() == 0)
 {
     <p>No devices found.</p>
 }
 else
 {
-    @foreach (var item in DeviceData)
+    @foreach (var device in Devices)
     {
-        <EnergyChart Day="@Today"
-                     Data="@item.EnergyData"
-                     Device="@item.Device"
-                     TotalPowerImportKwh="@item.TotalPowerImportKwh" />
+        if (device.ProductType == "HWE-SKT")
+        {
+            <SKTChart Day="@Today" Device="@device" />
+        }
+        if (device.ProductType == "HWE-P1")
+        {
+            <P1Chart Day="@Today" Device="@device" />
+            <P1GasChart Day="@Today" Device="@device" />
+        }
     }
 }
 
@@ -24,49 +30,14 @@ else
     private DateTime Today = DateTime.Today;
     private bool IsLoading = true;
 
-    private List<DeviceEnergyData> DeviceData = [];
-
-    private class DeviceEnergyData
-    {
-        public required DeviceModel Device { get; init; }
-
-        public IEnumerable<DeviceEnergyAggregate> EnergyData { get; init; } = [];
-
-        public double TotalPowerImportKwh { get; init; }
-    }
+    private IEnumerable<DeviceModel> Devices = [];
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
-            var devices = await deviceRepository.GetDevices();
-
-            var now = DateTime.UtcNow;
-            var today = now.Date;
-
-            foreach (var device in devices.Where(d => d.Track == 1))
-            {
-                var energyData =
-                    await deviceRepository.GetDeviceEnergyAggregates(
-                        device.Id,
-                        today,
-                        now,
-                        CancellationToken.None);
-
-                var totalPowerImportKwh =
-                    await deviceRepository.GetTotalPowerImportKwh(
-                        device.Id,
-                        today,
-                        now,
-                        CancellationToken.None);
-
-                DeviceData.Add(new DeviceEnergyData
-                {
-                    Device = device,
-                    EnergyData = energyData,
-                    TotalPowerImportKwh = totalPowerImportKwh
-                });
-            }
+            Devices = await deviceRepository.GetDevices()
+                .ContinueWith(t => t.Result.Where(r => r.Track == 1));
         }
         finally
         {
