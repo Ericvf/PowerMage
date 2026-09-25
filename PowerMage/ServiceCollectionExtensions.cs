@@ -3,6 +3,8 @@ using PowerMage.Api;
 using PowerMage.Repository;
 using PowerMage.Services;
 
+namespace PowerMage;
+
 public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddPowerMage(this IServiceCollection services)

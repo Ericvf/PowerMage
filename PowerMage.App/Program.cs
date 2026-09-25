@@ -1,17 +1,19 @@
+using PowerMage;
 using PowerMage.Components;
 using PowerMage.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddRazorComponents()
+builder.Services
+    .AddPowerMage()
+    .AddRazorComponents()
     .AddInteractiveServerComponents();
 
+builder.Logging.ClearProviders();
 builder.Logging.AddSimpleConsole(options =>
 {
     options.SingleLine = true;
 });
-
-builder.Services.AddPowerMage();
 
 var app = builder.Build();
 

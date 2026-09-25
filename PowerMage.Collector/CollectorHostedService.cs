@@ -5,7 +5,7 @@ using PowerMage.Repository;
 
 namespace PowerMage;
 
-public sealed class CollectorHostedService(DeviceRepository deviceRepository, DeviceClient deviceClient, ILogger<CollectorHostedService> logger) : BackgroundService
+public class CollectorHostedService(DeviceRepository deviceRepository, DeviceClient deviceClient, ILogger<CollectorHostedService> logger) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -72,7 +72,7 @@ public sealed class CollectorHostedService(DeviceRepository deviceRepository, De
             catch (Exception ex)
             {
                 logger.LogError(ex, "Error while collecting device measurements");
-                await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
+                await Task.Delay(TimeSpan.FromSeconds(15), stoppingToken);
             }
         }
     }

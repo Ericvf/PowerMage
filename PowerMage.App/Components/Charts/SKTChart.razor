@@ -38,14 +38,14 @@ else
             var now = DateTime.UtcNow;
             var today = now.Date;
 
-            var chartDataTask = deviceRepository.GetSKTDeviceEnergyAggregates(Device.Id,today,now,CancellationToken.None);
-            var totalPowerImportKwhTask = deviceRepository.GetTotalPowerSKT(Device.Id,today,now,CancellationToken.None);
+            var chartDataTask = deviceRepository.GetSKTDeviceEnergyAggregates(Device.Id, today, now);
+            var totalPowerImportKwhTask = deviceRepository.GetTotalPowerSKT(Device.Id, today, now);
 
-            await Task.WhenAll(chartDataTask, totalPowerImportKwhTask); 
+            await Task.WhenAll(chartDataTask, totalPowerImportKwhTask);
 
             chartData = chartDataTask.Result;
             totalPowerImportKwh = totalPowerImportKwhTask.Result;
-    }
+        }
         finally
         {
             IsLoading = false;

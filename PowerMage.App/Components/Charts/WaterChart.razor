@@ -13,7 +13,7 @@ else if (chartData.Count() == 0)
 }
 else
 {
-    <EnergyChart Day="Day" GetChartPoints="GetChartPoints" GetMaxValues="GetMaxWatts" CssColorClass="water" />
+    <EnergyChart Day="Day" GetChartPoints="GetChartPoints" GetMaxValues="GetMaxWaterConsumption" CssColorClass="water" />
 }
 
 @code {
@@ -37,14 +37,14 @@ else
             var now = DateTime.UtcNow;
             var today = now.Date;
 
-            var chartDataTask = deviceRepository.GetDeviceWaterAggregates(Device.Id,today,now,CancellationToken.None);
-            var totalGasM3Task = deviceRepository.GetTotalWaterConsumed(Device.Id, today, now, CancellationToken.None);
+            var chartDataTask = deviceRepository.GetDeviceWaterAggregates(Device.Id, today, now);
+            var totalGasM3Task = deviceRepository.GetTotalWaterConsumed(Device.Id, today, now);
 
-            await Task.WhenAll(chartDataTask, totalGasM3Task); 
+            await Task.WhenAll(chartDataTask, totalGasM3Task);
 
             chartData = chartDataTask.Result;
             totalWater = totalGasM3Task.Result;
-    }
+        }
         finally
         {
             IsLoading = false;
@@ -75,7 +75,7 @@ else
         return points;
     }
 
-    private double GetMaxWatts()
+    private double GetMaxWaterConsumption()
     {
         return chartData.Where(x => x.WaterConsumptionM3.HasValue)
             .Select(x => x.WaterConsumptionM3!.Value)

@@ -2,47 +2,23 @@
 
 <div class="energy-chart">
     <div class="chart-plot">
-        <svg class="energy-chart-svg"
-             viewBox="0 0 1440 360"
-             preserveAspectRatio="none"
-             aria-hidden="true">
-
+        <svg class="energy-chart-svg" viewBox="0 0 1440 360" preserveAspectRatio="none" aria-hidden="true">
             <g class="grid">
-
                 @for (var watt = YAxisStep; watt <= MaxValue; watt += YAxisStep)
                 {
                     var y = Math.Round(Y(watt));
-
-                    <line x1="@ChartLeft"
-                          y1="@y"
-                          x2="@ChartRight"
-                          y2="@y"
-                          class="horizontal-grid" />
+                    <line x1="@ChartLeft" y1="@y" x2="@ChartRight" y2="@y" class="horizontal-grid" />
                 }
 
                 @for (var minute = 60; minute <= MinutesPerDay; minute += 60)
                 {
                     var x = Math.Round(X(minute));
-                    <line x1="@x"
-                          y1="@ChartTop"
-                          x2="@x"
-                          y2="@ChartBottom"
-                          class="hour-grid" />
+                    <line x1="@x" y1="@ChartTop" x2="@x" y2="@ChartBottom" class="hour-grid" />
                 }
-
             </g>
 
-            <line class="axis"
-                  x1="@ChartLeft"
-                  y1="@ChartBottom"
-                  x2="@ChartRight"
-                  y2="@ChartBottom" />
-
-            <line class="axis"
-                  x1="@ChartLeft"
-                  y1="@ChartTop"
-                  x2="@ChartLeft"
-                  y2="@ChartBottom" />
+            <line class="axis" x1="@ChartLeft" y1="@ChartBottom" x2="@ChartRight" y2="@ChartBottom" />
+            <line class="axis" x1="@ChartLeft" y1="@ChartTop" x2="@ChartLeft" y2="@ChartBottom" />
 
             <g class="data">
                 <defs>

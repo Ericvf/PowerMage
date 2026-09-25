@@ -17,7 +17,6 @@ builder.Configuration
     .AddEnvironmentVariables();
 
 builder.Logging.ClearProviders();
-
 builder.Logging.AddSimpleConsole(options =>
 {
     options.SingleLine = true;

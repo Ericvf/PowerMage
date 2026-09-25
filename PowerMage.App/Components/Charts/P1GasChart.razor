@@ -1,7 +1,7 @@
 ﻿@inject DeviceRepository deviceRepository
 
 <h4 class="gas-color">@Math.Round(totalGasM3, 2) m3</h4>
-<h6 >Gas meter</h6>
+<h6>Gas meter</h6>
 
 @if (IsLoading)
 {
@@ -13,7 +13,7 @@ else if (chartData.Count() == 0)
 }
 else
 {
-    <EnergyChart Day="Day" GetChartPoints="GetChartPoints" GetMaxValues="GetMaxWatts" CssColorClass="gas" />
+    <EnergyChart Day="Day" GetChartPoints="GetChartPoints" GetMaxValues="GetMaxGasConsumption" CssColorClass="gas" />
 }
 
 @code {
@@ -37,14 +37,14 @@ else
             var now = DateTime.UtcNow;
             var today = now.Date;
 
-            var chartDataTask = deviceRepository.GetDeviceP1GasAggregates(Device.Id,today,now,CancellationToken.None);
-            var totalGasM3Task = deviceRepository.GetTotalGasConsumed(Device.Id, today, now, CancellationToken.None);
+            var chartDataTask = deviceRepository.GetDeviceP1GasAggregates(Device.Id, today, now);
+            var totalGasM3Task = deviceRepository.GetTotalGasConsumed(Device.Id, today, now);
 
-            await Task.WhenAll(chartDataTask, totalGasM3Task); 
+            await Task.WhenAll(chartDataTask, totalGasM3Task);
 
             chartData = chartDataTask.Result;
             totalGasM3 = totalGasM3Task.Result;
-    }
+        }
         finally
         {
             IsLoading = false;
@@ -75,7 +75,7 @@ else
         return points;
     }
 
-    private double GetMaxWatts()
+    private double GetMaxGasConsumption()
     {
         return chartData.Where(x => x.GasConsumptionM3.HasValue)
             .Select(x => x.GasConsumptionM3!.Value)
