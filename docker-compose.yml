@@ -11,10 +11,7 @@ services:
       - virtual-network
 
     labels:
-      dmz.url: http://powergandalf.docker.local/
-
-    ports:
-      - "8080:8080"
+      dmz.url: http://powermage.docker.local/
 
     volumes:
       - ./data:/app/data
