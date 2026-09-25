@@ -47,11 +47,21 @@ public sealed class CollectorHostedService(DeviceRepository deviceRepository, De
                         await deviceRepository.AddP1DeviceEnergy(measurement);
 
                     }
+                    else if (device.ProductType == "HWE-WTR")
+                    {
+                        var measurement = await deviceClient.GetWaterMeasurement(device, stoppingToken);
+                        if (measurement is null)
+                        {
+                            logger.LogWarning("No measurement returned by {DisplayName}", device.DisplayName);
+                            continue;
+                        }
+
+                        await deviceRepository.AddDeviceWater(measurement);
+                    }
                     else
                     {
                         logger.LogWarning("Unsupported product type {ProductType} for device {DisplayName}", device.ProductType, device.DisplayName);
                     }
-
                 }
                 await Task.Delay(TimeSpan.FromSeconds(15), stoppingToken);
             }

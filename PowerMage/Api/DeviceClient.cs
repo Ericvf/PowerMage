@@ -121,6 +121,29 @@ namespace PowerMage.Api
 
             return energy;
         }
+
+        public async Task<DeviceWaterMeasurementModel?> GetWaterMeasurement(DeviceModel deviceModel, CancellationToken cancellationToken = default)
+        {
+            var measurement = await httpClient.GetFromJsonAsync<WaterMeasurement>($"http://{deviceModel.IpAddress}/api/v1/data", cancellationToken);
+
+            if (measurement == null)
+                return null;
+
+            var water = new DeviceWaterMeasurementModel
+            {
+                DeviceId = deviceModel.Id,
+                Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+
+                WifiSsid = measurement.WifiSsid,
+                WifiStrength = measurement.WifiStrength,
+
+                TotalLiterM3 = measurement.TotalLiterM3,
+                ActiveLiterLpm = measurement.ActiveLiterLpm,
+                TotalLiterOffsetM3 = measurement.TotalLiterOffsetM3
+            };
+
+            return water;
+        }
     }
 
     public class SKTMeasurement
@@ -321,4 +344,39 @@ namespace PowerMage.Api
         public string? Unit { get; set; }
     }
 
+    public class SKTWaterMeasurement
+    {
+        [JsonPropertyName("wifi_ssid")]
+        public string? WifiSsid { get; set; }
+
+        [JsonPropertyName("wifi_strength")]
+        public double? WifiStrength { get; set; }
+
+        [JsonPropertyName("total_liter_m3")]
+        public double? TotalLiterM3 { get; set; }
+
+        [JsonPropertyName("active_liter_lpm")]
+        public double? ActiveLiterLpm { get; set; }
+
+        [JsonPropertyName("total_liter_offset_m3")]
+        public double? TotalLiterOffsetM3 { get; set; }
+    }
+
+    public class WaterMeasurement
+    {
+        [JsonPropertyName("wifi_ssid")]
+        public string? WifiSsid { get; set; }
+
+        [JsonPropertyName("wifi_strength")]
+        public double? WifiStrength { get; set; }
+
+        [JsonPropertyName("total_liter_m3")]
+        public double? TotalLiterM3 { get; set; }
+
+        [JsonPropertyName("active_liter_lpm")]
+        public double? ActiveLiterLpm { get; set; }
+
+        [JsonPropertyName("total_liter_offset_m3")]
+        public double? TotalLiterOffsetM3 { get; set; }
+    }
 }

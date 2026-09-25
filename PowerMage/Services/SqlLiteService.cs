@@ -142,6 +142,21 @@ public class SqlLiteService
 
                     FOREIGN KEY (DeviceId) REFERENCES Device(Id) ON DELETE CASCADE
                 );
+
+                CREATE TABLE IF NOT EXISTS DeviceWaterMeasurement (
+                    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    DeviceId INTEGER NOT NULL,
+                    Timestamp INTEGER NOT NULL,
+
+                    WifiSsid TEXT,
+                    WifiStrength REAL,
+
+                    TotalLiterM3 REAL,
+                    ActiveLiterLpm REAL,
+                    TotalLiterOffsetM3 REAL,
+
+                    FOREIGN KEY (DeviceId) REFERENCES Device(Id) ON DELETE CASCADE
+                );
             
                 CREATE INDEX IF NOT EXISTS IX_DeviceEnergy_DeviceId_Timestamp
                     ON DeviceEnergy (DeviceId, Timestamp);

@@ -135,6 +135,24 @@ h6 {
     stroke: none;
 }
 
+.water-color {
+    color: #37BAFF;
+}
+
+.water-line {
+    fill: none;
+    stroke: #37BAFF;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
+}
+
+.water-fill {
+    fill: url(#water-fill);
+    stroke: none;
+}
+
 .y-labels {
     position: relative;
     grid-column: 1;

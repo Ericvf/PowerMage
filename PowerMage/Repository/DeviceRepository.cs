@@ -224,6 +224,88 @@ namespace PowerMage.Repository
             return await connection.QueryAsync<DeviceP1GasAggregate>(command);
         }
 
+        public async Task<IEnumerable<DeviceWaterAggregate>> GetDeviceWaterAggregates(int deviceId, DateTime from, DateTime to, CancellationToken cancellationToken = default)
+        {
+            using var connection = await sqlLiteService.CreateOpenConnection();
+
+            const string sql = """
+                WITH RankedMeasurements AS (
+                    SELECT
+                        DeviceId,
+                        Timestamp,
+                        TotalLiterM3,
+                        ActiveLiterLpm,
+                        TotalLiterOffsetM3,
+                        (Timestamp / 300) * 300 AS IntervalStartUnix,
+
+                        ROW_NUMBER() OVER (
+                            PARTITION BY DeviceId, (Timestamp / 300)
+                            ORDER BY Timestamp DESC
+                        ) AS rn
+
+                    FROM DeviceWaterMeasurement
+                    WHERE DeviceId = @DeviceId
+                ),
+                IntervalReadings AS (
+                    SELECT
+                        DeviceId,
+                        Timestamp,
+                        TotalLiterM3,
+                        ActiveLiterLpm,
+                        TotalLiterOffsetM3,
+                        IntervalStartUnix,
+                        IntervalStartUnix + 300 AS IntervalEndUnix
+                    FROM RankedMeasurements
+                    WHERE rn = 1
+                ),
+                ReadingsWithPrevious AS (
+                    SELECT
+                        *,
+                        LAG(TotalLiterM3) OVER (
+                            PARTITION BY DeviceId
+                            ORDER BY IntervalStartUnix
+                        ) AS PreviousTotalLiterM3
+                    FROM IntervalReadings
+                )
+                SELECT
+                    DeviceId,
+                    IntervalStartUnix,
+                    IntervalEndUnix,
+
+                    TotalLiterM3 AS LastTotalLiterM3,
+                    PreviousTotalLiterM3,
+
+                    ActiveLiterLpm,
+
+                    TotalLiterOffsetM3,
+
+                    CASE
+                        WHEN PreviousTotalLiterM3 IS NOT NULL
+                             AND TotalLiterM3 >= PreviousTotalLiterM3
+                        THEN TotalLiterM3 - PreviousTotalLiterM3
+                        ELSE NULL
+                    END AS WaterConsumptionM3
+
+                FROM ReadingsWithPrevious
+                WHERE IntervalStartUnix >= @From
+                  AND IntervalStartUnix < @To
+
+                ORDER BY IntervalStartUnix;
+            """;
+
+            var command = new CommandDefinition(
+                sql,
+                new
+                {
+                    DeviceId = deviceId,
+                    From = ((DateTimeOffset)from.ToUniversalTime()).ToUnixTimeSeconds(),
+                    To = ((DateTimeOffset)to.ToUniversalTime()).ToUnixTimeSeconds()
+                },
+                cancellationToken: cancellationToken);
+
+            return await connection.QueryAsync<DeviceWaterAggregate>(command);
+        }
+
         public async Task<double> GetTotalPowerSKT(int deviceId, DateTime from, DateTime to, CancellationToken cancellationToken = default)
         {
             using var connection = await sqlLiteService.CreateOpenConnection();
@@ -268,7 +350,7 @@ namespace PowerMage.Repository
             return totalKwh ?? 0;
         }
 
-        public async Task<double> GetTotalGasConsumed(int deviceId,DateTime from,DateTime to,CancellationToken cancellationToken = default)
+        public async Task<double> GetTotalGasConsumed(int deviceId, DateTime from, DateTime to, CancellationToken cancellationToken = default)
         {
             using var connection = await sqlLiteService.CreateOpenConnection();
             var totalGas = await connection.ExecuteScalarAsync<double?>(
@@ -289,6 +371,30 @@ namespace PowerMage.Repository
                 });
 
             return totalGas ?? 0;
+        }
+
+        public async Task<double> GetTotalWaterConsumed(int deviceId,DateTime from,DateTime to,CancellationToken cancellationToken = default)
+        {
+            using var connection = await sqlLiteService.CreateOpenConnection();
+
+            var totalWater = await connection.ExecuteScalarAsync<double?>(
+                """
+                    SELECT
+                        COALESCE(MAX(TotalLiterM3) - MIN(TotalLiterM3), 0)
+                    FROM DeviceWaterMeasurement
+                    WHERE DeviceId = @DeviceId
+                      AND Timestamp >= @From
+                      AND Timestamp < @To
+                      AND TotalLiterM3 IS NOT NULL;
+                """,
+                new
+                {
+                    DeviceId = deviceId,
+                    From = new DateTimeOffset(from.ToUniversalTime()).ToUnixTimeSeconds(),
+                    To = new DateTimeOffset(to.ToUniversalTime()).ToUnixTimeSeconds()
+                });
+
+            return totalWater ?? 0;
         }
 
         public async Task<DeviceEnergyModel> AddSKTDeviceEnergy(DeviceEnergyModel energy)
@@ -539,6 +645,36 @@ namespace PowerMage.Repository
 
             return energy;
         }
+
+        public async Task<DeviceWaterMeasurementModel> AddDeviceWater(DeviceWaterMeasurementModel water)
+        {
+            using var connection = await sqlLiteService.CreateOpenConnection();
+
+            await connection.ExecuteAsync(
+                """
+                INSERT INTO DeviceWaterMeasurement (
+                    DeviceId,
+                    Timestamp,
+                    WifiSsid,
+                    WifiStrength,
+                    TotalLiterM3,
+                    ActiveLiterLpm,
+                    TotalLiterOffsetM3
+                )
+                VALUES (
+                    @DeviceId,
+                    @Timestamp,
+                    @WifiSsid,
+                    @WifiStrength,
+                    @TotalLiterM3,
+                    @ActiveLiterLpm,
+                    @TotalLiterOffsetM3
+                );
+                """,
+                water);
+
+            return water;
+        }
     }
 
     public class DeviceEnergyModel
@@ -642,6 +778,27 @@ namespace PowerMage.Repository
 
         public DateTime IntervalEnd => DateTimeOffset.FromUnixTimeSeconds(IntervalEndUnix).UtcDateTime;
     }
+    public class DeviceWaterAggregate
+    {
+        public long DeviceId { get; set; }
+
+        public long IntervalStartUnix { get; set; }
+        public long IntervalEndUnix { get; set; }
+
+        public double? LastTotalLiterM3 { get; set; }
+        public double? PreviousTotalLiterM3 { get; set; }
+
+        public double? ActiveLiterLpm { get; set; }
+        public double? TotalLiterOffsetM3 { get; set; }
+
+        public double? WaterConsumptionM3 { get; set; }
+
+        public DateTime IntervalStart =>
+            DateTimeOffset.FromUnixTimeSeconds(IntervalStartUnix).UtcDateTime;
+
+        public DateTime IntervalEnd =>
+            DateTimeOffset.FromUnixTimeSeconds(IntervalEndUnix).UtcDateTime;
+    }
 
     public class DeviceModel
     {
@@ -655,7 +812,7 @@ namespace PowerMage.Repository
     }
 
 
-public class DeviceP1EnergyModel
+    public class DeviceP1EnergyModel
     {
         public long Id { get; set; }
 
@@ -733,5 +890,20 @@ public class DeviceP1EnergyModel
         public double? Value { get; set; }
 
         public string? Unit { get; set; }
+    }
+
+
+    public class DeviceWaterMeasurementModel
+    {
+        public long Id { get; set; }
+        public long DeviceId { get; set; }
+        public long Timestamp { get; set; }
+
+        public string? WifiSsid { get; set; }
+        public double? WifiStrength { get; set; }
+
+        public double? TotalLiterM3 { get; set; }
+        public double? ActiveLiterLpm { get; set; }
+        public double? TotalLiterOffsetM3 { get; set; }
     }
 }

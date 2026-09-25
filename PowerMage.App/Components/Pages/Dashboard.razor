@@ -18,10 +18,14 @@ else
         {
             <SKTChart Day="@Today" Device="@device" />
         }
-        if (device.ProductType == "HWE-P1")
+        else if (device.ProductType == "HWE-P1")
         {
             <P1Chart Day="@Today" Device="@device" />
             <P1GasChart Day="@Today" Device="@device" />
+        }
+        else if (device.ProductType == "HWE-WTR")
+        {
+            <WaterChart Day="@Today" Device="@device" />
         }
     }
 }

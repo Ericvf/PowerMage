@@ -1,0 +1,85 @@
+﻿@inject DeviceRepository deviceRepository
+
+<h4 class="water-color">@Math.Round(totalWater, 3) l3</h4>
+<h6>Water meter</h6>
+
+@if (IsLoading)
+{
+    <p>Loading...</p>
+}
+else if (chartData.Count() == 0)
+{
+    <p>No data found.</p>
+}
+else
+{
+    <EnergyChart Day="Day" GetChartPoints="GetChartPoints" GetMaxValues="GetMaxWatts" CssColorClass="water" />
+}
+
+@code {
+    [Parameter]
+    public DateTime Day { get; set; }
+
+    [Parameter]
+    public DeviceModel? Device { get; set; }
+
+    private IEnumerable<DeviceWaterAggregate> chartData = [];
+    private double totalWater = 0;
+    private bool IsLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            if (Device == null)
+                return;
+
+            var now = DateTime.UtcNow;
+            var today = now.Date;
+
+            var chartDataTask = deviceRepository.GetDeviceWaterAggregates(Device.Id,today,now,CancellationToken.None);
+            var totalGasM3Task = deviceRepository.GetTotalWaterConsumed(Device.Id, today, now, CancellationToken.None);
+
+            await Task.WhenAll(chartDataTask, totalGasM3Task); 
+
+            chartData = chartDataTask.Result;
+            totalWater = totalGasM3Task.Result;
+    }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private List<ChartPoint> GetChartPoints()
+    {
+        var dayStartUnix = new DateTimeOffset(Day).ToUnixTimeSeconds();
+        var dayEndUnix = dayStartUnix + 86400;
+
+        var points = chartData
+            .Where(x =>
+                x.WaterConsumptionM3.HasValue &&
+                x.IntervalStartUnix >= dayStartUnix &&
+                x.IntervalStartUnix < dayEndUnix)
+
+            .Select(x =>
+            {
+                var minute =
+                    (x.IntervalStartUnix - dayStartUnix) / 60.0;
+
+                return new ChartPoint(minute, x.WaterConsumptionM3!.Value);
+            })
+            .OrderBy(x => x.Minute)
+            .ToList();
+
+        return points;
+    }
+
+    private double GetMaxWatts()
+    {
+        return chartData.Where(x => x.WaterConsumptionM3.HasValue)
+            .Select(x => x.WaterConsumptionM3!.Value)
+            .DefaultIfEmpty(0)
+            .Max();
+    }
+}
