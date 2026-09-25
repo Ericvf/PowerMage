@@ -1,0 +1,26 @@
+﻿@inject DeviceRepository deviceRepository
+
+<h3>Devices</h3>
+
+<ul>
+    @foreach (var device in devices)
+    {
+        <li>@device.Serial</li>
+        <li>@device.ProductType</li>
+        <li>@device.ProductName</li>
+        <li>@device.IpAddress</li>
+        <li>@device.DisplayName</li>
+    }
+</ul>
+
+@code {
+    private IEnumerable<DeviceModel> devices = new List<DeviceModel>();
+
+    protected async override Task OnInitializedAsync()
+    {
+        devices = await deviceRepository.GetDevices();
+        StateHasChanged();
+
+        await base.OnInitializedAsync();
+    }
+}

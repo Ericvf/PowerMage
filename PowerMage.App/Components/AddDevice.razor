@@ -1,0 +1,87 @@
+﻿@implements IDisposable
+
+@inject IHomewizardDiscovery Discovery
+@inject DeviceRepository deviceRepository
+
+<h3>HomeWizard devices</h3>
+<h3>AddDevice</h3>
+
+@foreach (var device in devices.Where(d => d.ApiEnabled))
+{
+    <ul>
+        <li> @device.Serial </li>
+        <li> @device.ProductType </li>
+        <li> @device.ProductName </li>
+        <li> @device.ApiPath</li>
+        <li> @device.ApiEnabled </li>
+        <li> @device.HostName </li>
+        <li> @device.Port </li>
+        <li> @device.ServiceName </li>
+        <ul>
+        @foreach (var ip in device.Addresses)
+        {
+            <li> @ip </li>
+        }
+        </ul>
+        <button @onclick="() => AddClick(device)">Add Device</button>
+    </ul>
+}
+
+@code {
+    private readonly List<HomeWizardDevice> devices = [];
+
+    private CancellationTokenSource? cancellationTokenSource;
+
+    protected override void OnInitialized()
+    {
+        Discovery.DeviceDiscovered += OnDeviceDiscovered;
+
+        cancellationTokenSource = new CancellationTokenSource();
+
+        _ = Discovery.Discover(
+            cancellationTokenSource.Token);
+    }
+
+    private void OnDeviceDiscovered(
+       object? sender,
+       HomeWizardDevice device)
+    {
+        _ = InvokeAsync(() =>
+        {
+            var existingIndex =
+                devices.FindIndex(
+                    x => x.Serial.Equals(
+                        device.Serial,
+                        StringComparison.OrdinalIgnoreCase));
+
+            if (existingIndex >= 0)
+                devices[existingIndex] = device;
+            else
+                devices.Add(device);
+
+            StateHasChanged();
+        });
+    }
+
+    public void Dispose()
+    {
+        Discovery.DeviceDiscovered -= OnDeviceDiscovered;
+
+        cancellationTokenSource?.Cancel();
+        cancellationTokenSource?.Dispose();
+    }
+
+    private async Task AddClick(HomeWizardDevice device)
+    {
+        // Add the device to the repository
+        await deviceRepository.AddDevice(new DeviceModel()
+        {
+            Serial = device.Serial,
+            ProductType = device.ProductType,
+            ProductName = device.ProductName,
+            DisplayName = device.ProductName,
+            IpAddress = device.Addresses.First().ToString(),
+            Track = 1
+        });
+    }
+}

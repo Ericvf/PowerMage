@@ -1,0 +1,40 @@
+services:
+  powergandalf:
+    build:
+      context: .
+      dockerfile: PowerMage.App/dockerfile
+    container_name: PowerMage-App
+    restart: unless-stopped
+    environment:
+      ConnectionStrings__DefaultConnection: "Data Source=/app/data/app.db"
+    networks:
+      - virtual-network
+
+    labels:
+      dmz.url: http://powergandalf.docker.local/
+
+    ports:
+      - "8080:8080"
+
+    volumes:
+      - ./data:/app/data
+
+  powergandalf-collector:
+    build:
+      context: .
+      dockerfile: PowerMage.Collector/dockerfile
+    container_name: PowerMage-Collector
+    restart: unless-stopped
+    environment:
+      ConnectionStrings__DefaultConnection: "Data Source=/app/data/app.db"
+
+    networks:
+      - virtual-network
+
+    volumes:
+      - ./data:/app/data
+
+networks:
+  virtual-network:
+    external: true
+    name: virtual-network

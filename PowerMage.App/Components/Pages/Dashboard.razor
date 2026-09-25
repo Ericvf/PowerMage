@@ -1,0 +1,76 @@
+﻿@page "/Dashboard"
+@inject DeviceRepository deviceRepository
+
+@if (IsLoading)
+{
+    <p>Loading...</p>
+}
+else if (DeviceData.Count == 0)
+{
+    <p>No devices found.</p>
+}
+else
+{
+    @foreach (var item in DeviceData)
+    {
+        <EnergyChart Day="@Today"
+                     Data="@item.EnergyData"
+                     Device="@item.Device"
+                     TotalPowerImportKwh="@item.TotalPowerImportKwh" />
+    }
+}
+
+@code {
+    private DateTime Today = DateTime.Today;
+    private bool IsLoading = true;
+
+    private List<DeviceEnergyData> DeviceData = [];
+
+    private class DeviceEnergyData
+    {
+        public required DeviceModel Device { get; init; }
+
+        public IEnumerable<DeviceEnergyAggregate> EnergyData { get; init; } = [];
+
+        public double TotalPowerImportKwh { get; init; }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var devices = await deviceRepository.GetDevices();
+
+            var now = DateTime.UtcNow;
+            var today = now.Date;
+
+            foreach (var device in devices.Where(d => d.Track == 1))
+            {
+                var energyData =
+                    await deviceRepository.GetDeviceEnergyAggregates(
+                        device.Id,
+                        today,
+                        now,
+                        CancellationToken.None);
+
+                var totalPowerImportKwh =
+                    await deviceRepository.GetTotalPowerImportKwh(
+                        device.Id,
+                        today,
+                        now,
+                        CancellationToken.None);
+
+                DeviceData.Add(new DeviceEnergyData
+                {
+                    Device = device,
+                    EnergyData = energyData,
+                    TotalPowerImportKwh = totalPowerImportKwh
+                });
+            }
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+}

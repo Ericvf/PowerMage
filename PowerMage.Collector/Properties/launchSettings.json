@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "PowerGanfalf.Collector": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}

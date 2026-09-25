@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".gitignore" />
+    <File Path="docker-compose.yml" />
+    <File Path="LICENSE" />
+  </Folder>
+  <Project Path="PowerMage.App/PowerMage.App.csproj" />
+  <Project Path="PowerMage.Collector/PowerMage.Collector.csproj" />
+  <Project Path="PowerMage/PowerMage.csproj" />
+</Solution>
