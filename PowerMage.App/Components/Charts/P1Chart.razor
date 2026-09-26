@@ -14,7 +14,7 @@
     }
     else
     {
-        <EnergyChart Day="Day" GetChartPoints="GetChartPoints" GetMaxValues="GetMaxWatts" />
+        <EnergyChart Day="Day" GetChartPoints="GetChartPoints" GetMaxValues="GetMaxWatts" GetMinValues="GetMinWatts" />
     }
 </div>
 
@@ -83,5 +83,13 @@
             .Select(x => x.AvgActivePowerW!.Value)
             .DefaultIfEmpty(0)
             .Max();
+    }
+
+    private double GetMinWatts()
+    {
+        return chartData.Where(x => x.AvgActivePowerW.HasValue)
+            .Select(x => x.AvgActivePowerW!.Value)
+            .DefaultIfEmpty(0)
+            .Min();
     }
 }

@@ -4,7 +4,7 @@
     <div class="chart-plot">
         <svg class="energy-chart-svg" viewBox="0 0 1440 360" preserveAspectRatio="none" aria-hidden="true">
             <g class="grid">
-                @for (var watt = YAxisStep; watt <= MaxValue; watt += YAxisStep)
+                @for (var watt = MinValue + YAxisStep; watt <= MaxValue; watt += YAxisStep)
                 {
                     var y = Math.Round(Y(watt));
                     <line x1="@ChartLeft" y1="@y" x2="@ChartRight" y2="@y" class="horizontal-grid" />
@@ -14,6 +14,17 @@
                 {
                     var x = Math.Round(X(minute));
                     <line x1="@x" y1="@ChartTop" x2="@x" y2="@ChartBottom" class="hour-grid" />
+                }
+
+                @if (MinValue < 0 && MaxValue >= 0)
+                {
+                    var y = Math.Round(Y(0));
+                    _ = y;
+                    <line x1="@ChartLeft"
+                          y1="@y"
+                          x2="@ChartRight"
+                          y2="@y"
+                          class="zero-line" />
                 }
             </g>
 
@@ -32,11 +43,11 @@
                               stop-color="#200058"
                               stop-opacity="0.25" />
                     </linearGradient>
-                    <linearGradient id="import-fill"
+                    <linearGradient id="power-import-fill"
                                     x1="0"
-                                    y1="0"
+                                    y1="1"
                                     x2="0"
-                                    y2="1">
+                                    y2="0">
                         <stop offset="0%"
                               stop-color="#04DE71"
                               stop-opacity="0.75" />
@@ -77,14 +88,26 @@
                 {
                     if (segment.Count >= 2)
                     {
-                        <path d="@BuildFilledPath(segment)" class="@($"{CssColorClass}-fill")" />
-                        <path d="@BuildSmoothPath(segment)" class="@($"{CssColorClass}-line")" />
+                        var isNegative = segment.Any(x => x.Watts < 0);
+
+                        if (isNegative)
+                        {
+                            <path d="@BuildFilledPath(segment)" class="@($"{CssColorClass}-import-fill")" />
+                            <path d="@BuildSmoothPath(segment)" class="@($"{CssColorClass}-import-line")" />
+                        }
+                        else
+                        {
+                            <path d="@BuildFilledPath(segment)" class="@($"{CssColorClass}-fill")" />
+                            <path d="@BuildSmoothPath(segment)" class="@($"{CssColorClass}-line")" />
+                        }
                     }
                 }
+
             </g>
 
             <line class="axis" x1="@ChartLeft" y1="@ChartBottom" x2="@ChartRight" y2="@ChartBottom" />
             <line class="axis" x1="@ChartLeft" y1="@ChartTop" x2="@ChartLeft" y2="@ChartBottom" />
+
         </svg>
 
         <div class="x-labels">
@@ -98,14 +121,13 @@
             }
         </div>
     </div>
-
     <div class="y-labels">
-        @for (double value = 0; value <= MaxValue; value += YAxisStep)
+        @for (double value = MinValue; value <= MaxValue; value += YAxisStep)
         {
             var percentage = ChartYPercentage(value);
 
-            <span style="top: @(percentage.ToString("0.###", CultureInfo.InvariantCulture))%">
-                @value.ToString("0.###", CultureInfo.InvariantCulture)
+            <span style="@($"top: {percentage.ToString("0.###", CultureInfo.InvariantCulture)}%")">
+                @FormatYAxisValue(value)
             </span>
         }
     </div>
@@ -122,10 +144,16 @@
     public Func<double>? GetMaxValues { get; set; }
 
     [Parameter]
+    public Func<double>? GetMinValues { get; set; }
+
+    [Parameter]
     public string CssColorClass { get; set; } = "power";
 
-    private double MaxValue => GetMaxValues != null ? GetMaxValues() : 0d;
-    private double YAxisStep => MaxValue / 10;
+    private double MaxValue => Math.Max(0, GetMaxValues?.Invoke() ?? 0d);
+
+    private double MinValue => Math.Min(0, GetMinValues?.Invoke() ?? 0d);
+
+    private double YAxisStep => (MaxValue - MinValue) / 10;
 
     private const int MinutesPerDay = 1440;
     private const double ChartLeft = 0;
@@ -140,10 +168,10 @@
 
     private double Y(double watts)
     {
-        watts = Math.Clamp(watts, 0, MaxValue);
+        watts = Math.Clamp(watts, MinValue, MaxValue);
 
         return ChartBottom -
-               (watts / MaxValue) *
+               ((watts - MinValue) / (MaxValue - MinValue)) *
                (ChartBottom - ChartTop);
     }
 
@@ -170,12 +198,13 @@
             return new List<List<ChartPoint>>();
 
         var points = GetChartPoints();
-
         var segments = new List<List<ChartPoint>>();
+
         if (points.Count == 0)
             return segments;
 
         var current = new List<ChartPoint>();
+
         foreach (var point in points)
         {
             if (current.Count == 0)
@@ -185,11 +214,34 @@
             }
 
             var previous = current[^1];
-            if (point.Minute - previous.Minute > 5.01)
+
+            var gap = point.Minute - previous.Minute > 5.01;
+            if (gap)
             {
                 segments.Add(current);
+                current = new List<ChartPoint> { point };
+                continue;
+            }
 
-                current = new List<ChartPoint>();
+            var crossesZero = (previous.Watts < 0 && point.Watts > 0) 
+            || (previous.Watts > 0 && point.Watts < 0);
+
+            if (crossesZero)
+            {
+                var fraction = -previous.Watts / (point.Watts - previous.Watts);
+                var zeroMinute = previous.Minute + fraction * (point.Minute - previous.Minute);
+                var zeroPoint = new ChartPoint(zeroMinute, 0);
+
+                current.Add(zeroPoint);
+                segments.Add(current);
+                
+                current = new List<ChartPoint>
+                {
+                    zeroPoint,
+                    point
+                };
+
+                continue;
             }
 
             current.Add(point);
@@ -211,9 +263,12 @@
         var firstX = X(points[0].Minute);
         var lastX = X(points[^1].Minute);
 
+        // Zero line's Y-coordinate in the chart
+        var zeroY = Y(0);
+
         return $"{line} " +
-               $"L {F(lastX)} {F(ChartBottom)} " +
-               $"L {F(firstX)} {F(ChartBottom)} Z";
+               $"L {F(lastX)} {F(zeroY)} " +
+               $"L {F(firstX)} {F(zeroY)} Z";
     }
 
     private string BuildSmoothPath(List<ChartPoint> points)
@@ -289,4 +344,31 @@
             CultureInfo.InvariantCulture);
     }
 
+    private string FormatYAxisValue(double value)
+    {
+        var step = Math.Abs(YAxisStep);
+
+        if (step >= 100)
+            return value.ToString("0", CultureInfo.InvariantCulture);
+
+        if (step >= 10)
+            return value.ToString("0.0", CultureInfo.InvariantCulture);
+
+        if (step >= 1)
+            return value.ToString("0.##", CultureInfo.InvariantCulture);
+
+        if (step >= 0.1)
+            return value.ToString("0.0", CultureInfo.InvariantCulture);
+
+        if (step >= 0.01)
+            return value.ToString("0.00", CultureInfo.InvariantCulture);
+
+        if (step >= 0.001)
+            return value.ToString("0.000", CultureInfo.InvariantCulture);
+
+        if (step >= 0.0001)
+            return value.ToString("0.0000", CultureInfo.InvariantCulture);
+
+        return value.ToString("0.#####", CultureInfo.InvariantCulture);
+    }
 }

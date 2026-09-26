@@ -107,7 +107,6 @@ h1:focus {
     vector-effect: non-scaling-stroke;
 }
 
-
 .power-line {
     fill: none;
     stroke: rgb(177, 0, 255);
@@ -120,6 +119,25 @@ h1:focus {
 .power-fill {
     fill: url(#power-fill);
     stroke: none;
+}
+.power-import-line {
+    fill: none;
+    stroke: #04DE71;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
+}
+
+.power-import-fill {
+    fill: url(#power-import-fill);
+    stroke: none;
+}
+
+.zero-line {
+    stroke: #888;
+    stroke-width: 1.5;
+    stroke-dasharray: 5 3;
 }
 
 .chartblock .gas-color {
@@ -192,11 +210,12 @@ h1:focus {
 
 /* General */
 h2 {
-    margin: 10px;
-    text-align:right;
-    font-family:Tahoma;
-    font-weight: 100;
-    font-size:1.1em;
+    margin: 12px;
+    text-align: right;
+    font-family: Trebuchet MS;
+    font-weight: 600;
+    font-size: 1.2em;
+    margin-top: 1em;
     margin-bottom: 1em;
 }
 footer {
