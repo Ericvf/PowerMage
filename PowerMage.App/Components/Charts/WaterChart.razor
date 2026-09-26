@@ -75,7 +75,7 @@
                 var minute =
                     (x.IntervalStartUnix - dayStartUnix) / 60.0;
 
-                return new ChartPoint(minute, x.WaterConsumptionM3!.Value);
+                return new ChartPoint(minute, x.WaterConsumptionM3!.Value * 1000);
             })
             .OrderBy(x => x.Minute)
             .ToList();
@@ -86,7 +86,7 @@
     private double GetMaxWaterConsumption()
     {
         return chartData.Where(x => x.WaterConsumptionM3.HasValue)
-            .Select(x => x.WaterConsumptionM3!.Value)
+            .Select(x => x.WaterConsumptionM3!.Value * 1000)
             .DefaultIfEmpty(0)
             .Max();
     }
