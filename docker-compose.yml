@@ -1,5 +1,5 @@
 services:
-  powergandalf:
+  powermage:
     build:
       context: .
       dockerfile: PowerMage.App/dockerfile
@@ -17,7 +17,7 @@ services:
     volumes:
       - ./data:/app/data
 
-  powergandalf-collector:
+  powermage-collector:
     build:
       context: .
       dockerfile: PowerMage.Collector/dockerfile
