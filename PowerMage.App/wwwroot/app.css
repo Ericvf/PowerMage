@@ -71,6 +71,16 @@ h1:focus {
     height: 300px;
 }
 
+/* Check for portrait mode */
+@media (orientation: portrait) {
+    .energy-chart {
+        position: relative;
+        display: grid;
+        grid-template-columns: 50px minmax(0, 1fr);
+        height: 150px;
+    }
+}
+
 .chart-plot {
     position: relative;
     min-width: 0;
@@ -223,9 +233,19 @@ h1:focus {
 
     .x-labels span {
         position: absolute;
-        bottom: 15px;
+        bottom: 12px;
         white-space: nowrap;
     }
+
+
+/* Check for portrait mode */
+@media (orientation: portrait) {
+    .x-labels span {
+        position: absolute;
+        bottom: 0px;
+        white-space: nowrap;
+    }
+}
 
 /* General */
 h2 {
