@@ -38,7 +38,7 @@
                 return;
 
             var now = DateTime.UtcNow;
-            var today = now.Date;
+            var today = DateTime.Now.Date;
 
             var chartDataTask = deviceRepository.GetSKTDeviceEnergyAggregates(Device.Id, today, now);
             var totalPowerImportKwhTask = deviceRepository.GetTotalPowerSKT(Device.Id, today, now);

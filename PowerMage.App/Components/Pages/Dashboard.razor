@@ -2,16 +2,18 @@
 @using PowerMage.Components.Charts
 @inject DeviceRepository deviceRepository
 
-<header style="display: flex; align-items: center;">
-    <button class="secondary outline"><small>➕ Add device</small></button>
-    <h2>Power Mage⚡️</h2>
-</header>
+
 
 <PageTitle>PowerMage⚡ - Dashboard</PageTitle>
 
 @if (IsLoading)
 {
-    <p>Loading...</p>
+    <main class="container">
+        <article>
+            <p>Loading Power Mage ⚡</p>
+            <article aria-busy="true"></article>
+        </article>
+    </main>
 }
 else if (!Devices.Any())
 {
@@ -20,12 +22,16 @@ else if (!Devices.Any())
             <h2>Welcome to Power Mage ⚡</h2>
             <p>It appears you have not added any devices yet. Use the button above to add devices to Power Mage.</p>
         </article>
-    </main>
-
-  
+    </main>  
 }
 else
 {
+
+    <header style="display: flex; align-items: center;">
+        <button class="secondary outline"><small>➕ Add device</small></button>
+        <h2>Power Mage⚡️</h2>
+    </header>
+
     @foreach (var device in Devices)
     {
         if (device.ProductType == "HWE-SKT")
@@ -54,16 +60,24 @@ else
 
     private IEnumerable<DeviceModel> Devices = [];
 
-    protected override async Task OnInitializedAsync()
+
+    protected async override Task OnAfterRenderAsync(bool firstRender)
     {
-        try
+        if (firstRender)
         {
-            Devices = await deviceRepository.GetDevices()
-                .ContinueWith(t => t.Result.Where(r => r.Track == 1));
-        }
-        finally
-        {
-            IsLoading = false;
+            try
+            {
+                var deviceTask = deviceRepository.GetDevices()
+                    .ContinueWith(t => t.Result.Where(r => r.Track == 1));
+
+                await Task.WhenAll(Task.Delay(500), deviceTask);
+                Devices = deviceTask.Result;
+            }
+            finally
+            {
+                IsLoading = false;
+                StateHasChanged();
+            }
         }
     }
 }

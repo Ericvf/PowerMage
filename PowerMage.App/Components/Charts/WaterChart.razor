@@ -43,8 +43,8 @@
                 return;
 
             var now = DateTime.UtcNow;
-            var today = now.Date;
-
+            var today = DateTime.Now.Date;
+            
             var chartDataTask = deviceRepository.GetDeviceWaterAggregates(Device.Id, today, now);
             var totalGasM3Task = deviceRepository.GetTotalWaterConsumed(Device.Id, today, now);
 
