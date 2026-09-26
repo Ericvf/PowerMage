@@ -1,7 +1,10 @@
 ﻿@inject DeviceRepository deviceRepository
 
 <div class="chartblock">
-    <h4 class="water-color">@Math.Round(totalWater, 3) L</h4>
+    <div class="title">
+        <span class="water-color">🡇 @Math.Round(totalWater, 2) <span class="small">L</span></span>
+    </div>
+
     <h6>Water meter</h6>
 
     @if (IsLoading)

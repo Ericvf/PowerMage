@@ -1,7 +1,9 @@
 ﻿@inject DeviceRepository deviceRepository
 
 <div class="chartblock">
-    <h4>@Math.Round(totalPowerImportKwh, 2) Kwh</h4>
+    <div class="title">
+        <span class="import-color">🡇 @Math.Round(totalPowerImportKwh, 2) <span class="small">Kwh</span></span>
+    </div>
     <h6>@Device?.DisplayName</h6>
 
     @if (IsLoading)

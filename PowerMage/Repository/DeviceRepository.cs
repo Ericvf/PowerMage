@@ -350,6 +350,28 @@ public class DeviceRepository
         return totalKwh ?? 0;
     }
 
+    public async Task<double> GetTotalExportP1(int deviceId, DateTime from, DateTime to, CancellationToken cancellationToken = default)
+    {
+        using var connection = await sqlLiteService.CreateOpenConnection();
+        var totalKwh = await connection.ExecuteScalarAsync<double?>(
+            """
+                SELECT
+                    MAX(TotalPowerExportKwh) - MIN(TotalPowerExportKwh)
+                FROM DeviceP1Measurement
+                WHERE DeviceId = @DeviceId
+                  AND Timestamp >= @From
+                  AND Timestamp < @To;
+            """,
+            new
+            {
+                DeviceId = deviceId,
+                From = ((DateTimeOffset)from.ToUniversalTime()).ToUnixTimeSeconds(),
+                To = ((DateTimeOffset)to.ToUniversalTime()).ToUnixTimeSeconds()
+            });
+
+        return totalKwh ?? 0;
+    }
+
     public async Task<double> GetTotalGasConsumed(int deviceId, DateTime from, DateTime to, CancellationToken cancellationToken = default)
     {
         using var connection = await sqlLiteService.CreateOpenConnection();

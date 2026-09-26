@@ -134,6 +134,25 @@ h1:focus {
     stroke: none;
 }
 
+
+.chartblock .title {
+    font-weight: 500;
+    font-size: 1.2em;
+}
+
+.chartblock .small {
+    font-size: 0.6em;
+}
+
+
+.chartblock .import-color {
+    color: rgb(177, 0, 255);
+}
+
+.chartblock .export-color {
+    color: #04DE71;
+}
+
 .zero-line {
     stroke: #888;
     stroke-width: 1.5;
@@ -218,6 +237,9 @@ h2 {
     margin-top: 1em;
     margin-bottom: 1em;
 }
-footer {
+body > footer {
     text-align: center;
+    margin:5px;
+    padding:0;
+    padding-block:0;
 }

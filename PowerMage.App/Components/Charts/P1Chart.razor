@@ -1,7 +1,10 @@
 ﻿@inject DeviceRepository deviceRepository
 
 <div class="chartblock">
-    <h4>@Math.Round(totalPowerImportKwh, 2) Kwh</h4>
+    <div class="title">
+        <span class="import-color">🡇 @Math.Round(totalPowerImportKwh, 2) <span class="small">Kwh</span></span>
+        <span class="export-color">🡅 @Math.Round(totalPowerExportKwh, 2) <span class="small">Kwh</span></span>
+    </div>
     <h6>@Device?.DisplayName</h6>
 
     @if (IsLoading)
@@ -27,6 +30,7 @@
 
     private IEnumerable<DeviceP1EnergyAggregate> chartData = [];
     private double totalPowerImportKwh = 0;
+    private double totalPowerExportKwh = 0;
     private bool IsLoading = true;
 
     protected override async Task OnInitializedAsync()
@@ -41,11 +45,13 @@
 
             var chartDataTask = deviceRepository.GetDeviceP1EnergyAggregates(Device.Id, today, now);
             var totalPowerImportKwhTask = deviceRepository.GetTotalP1(Device.Id, today, now);
+            var totalPowerExportKwhTask = deviceRepository.GetTotalExportP1(Device.Id, today, now);
 
-            await Task.WhenAll(chartDataTask, totalPowerImportKwhTask);
+            await Task.WhenAll(chartDataTask, totalPowerImportKwhTask, totalPowerExportKwhTask);
 
             chartData = chartDataTask.Result;
             totalPowerImportKwh = totalPowerImportKwhTask.Result;
+            totalPowerExportKwh = totalPowerExportKwhTask.Result;
         }
         finally
         {
