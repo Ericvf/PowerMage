@@ -254,15 +254,16 @@ h1:focus {
 }
 
 /* General */
-h2 {
-    margin: 12px;
-    text-align: right;
-    font-family: Trebuchet MS;
-    font-weight: 600;
-    font-size: 1.2em;
-    margin-top: 1em;
-    margin-bottom: 1em;
+body > header{
+    padding:0;
+    margin:10px 10px 0px 10px;
 }
+    body > header h2 {
+        margin-left: auto;
+        font-family: Trebuchet MS;
+        font-weight: 600;
+        font-size: 1.2em;
+    }
 
 body > footer {
     text-align: center;

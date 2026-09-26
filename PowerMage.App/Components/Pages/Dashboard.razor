@@ -2,15 +2,27 @@
 @using PowerMage.Components.Charts
 @inject DeviceRepository deviceRepository
 
-<h2>Power Mage⚡️</h2>
+<header style="display: flex; align-items: center;">
+    <button class="secondary outline"><small>➕ Add device</small></button>
+    <h2>Power Mage⚡️</h2>
+</header>
+
+<PageTitle>PowerMage⚡ - Dashboard</PageTitle>
 
 @if (IsLoading)
 {
     <p>Loading...</p>
 }
-else if (Devices.Count() == 0)
+else if (!Devices.Any())
 {
-    <p>No devices found.</p>
+    <main class="container">
+        <article>
+            <h2>Welcome to Power Mage ⚡</h2>
+            <p>It appears you have not added any devices yet. Use the button above to add devices to Power Mage.</p>
+        </article>
+    </main>
+
+  
 }
 else
 {

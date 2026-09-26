@@ -4,10 +4,13 @@
     <div class="chart-plot">
         <svg class="energy-chart-svg" viewBox="0 0 1440 360" preserveAspectRatio="none" aria-hidden="true">
             <g class="grid">
-                @for (var watt = MinValue + YAxisStep; watt <= MaxValue; watt += YAxisStep)
+                @if (YAxisStep > 0)
                 {
-                    var y = Math.Round(Y(watt));
-                    <line x1="@ChartLeft" y1="@y" x2="@ChartRight" y2="@y" class="horizontal-grid" />
+                    @for (var watt = MinValue + YAxisStep; watt <= MaxValue; watt += YAxisStep)
+                    {
+                        var y = Math.Round(Y(watt));
+                        <line x1="@ChartLeft" y1="@y" x2="@ChartRight" y2="@y" class="horizontal-grid" />
+                    }
                 }
 
                 @for (var minute = 60; minute <= MinutesPerDay; minute += 60)
@@ -122,13 +125,16 @@
         </div>
     </div>
     <div class="y-labels">
-        @for (double value = MinValue; value <= MaxValue; value += YAxisStep)
+        @if (YAxisStep > 0)
         {
-            var percentage = ChartYPercentage(value);
+            @for (double value = MinValue; value <= MaxValue; value += YAxisStep)
+            {
+                var percentage = ChartYPercentage(value);
 
-            <span style="@($"top: {percentage.ToString("0.###", CultureInfo.InvariantCulture)}%")">
-                @FormatYAxisValue(value)
-            </span>
+                <span style="@($"top: {percentage.ToString("0.###", CultureInfo.InvariantCulture)}%")">
+                    @FormatYAxisValue(value)
+                </span>
+            }
         }
     </div>
 </div>
@@ -198,6 +204,12 @@
             return new List<List<ChartPoint>>();
 
         var points = GetChartPoints();
+
+        if (!points.Any())
+        {
+            return new List<List<ChartPoint>>();
+        }
+
         var segments = new List<List<ChartPoint>>();
 
         if (points.Count == 0)
@@ -223,7 +235,7 @@
                 continue;
             }
 
-            var crossesZero = (previous.Watts < 0 && point.Watts > 0) 
+            var crossesZero = (previous.Watts < 0 && point.Watts > 0)
             || (previous.Watts > 0 && point.Watts < 0);
 
             if (crossesZero)
@@ -234,7 +246,7 @@
 
                 current.Add(zeroPoint);
                 segments.Add(current);
-                
+
                 current = new List<ChartPoint>
                 {
                     zeroPoint,
