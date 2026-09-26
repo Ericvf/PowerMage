@@ -1,6 +1,7 @@
 ﻿@page "/"
 @using PowerMage.Components.Charts
 @inject DeviceRepository deviceRepository
+@inject NavigationManager Navigation
 
 <PageTitle>PowerMage⚡ - Dashboard</PageTitle>
 
@@ -24,9 +25,8 @@ else if (!Devices.Any())
 }
 else
 {
-
     <header style="display: flex; align-items: center;">
-        <button class="secondary outline"><small>➕ Add device</small></button>
+        <button class="secondary outline" onclick="@(() => Navigation.NavigateTo("/Devices", false))"><small>➕ Add device</small></button>
         <h2>Power Mage⚡️</h2>
     </header>
 
@@ -68,7 +68,7 @@ else
                 var deviceTask = deviceRepository.GetDevices()
                     .ContinueWith(t => t.Result.Where(r => r.Track == 1));
 
-                await Task.WhenAll(Task.Delay(500), deviceTask);
+                await Task.WhenAll(deviceTask);
                 Devices = deviceTask.Result;
             }
             finally

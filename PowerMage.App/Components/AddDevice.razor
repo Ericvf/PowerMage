@@ -4,9 +4,7 @@
 @inject IHomewizardDiscovery Discovery
 @inject DeviceRepository deviceRepository
 
-<h3>HomeWizard devices</h3>
-<h3>AddDevice</h3>
-
+<h3>Add Device</h3>
 
 <EditForm Model="newDevice" OnValidSubmit="Submit">
     <DataAnnotationsValidator />
@@ -44,7 +42,7 @@
     </label>
 
     <button type="submit">
-        ➕ Add Entry
+        ➕ Add device
     </button>
 </EditForm>
 
@@ -89,7 +87,15 @@
             Track = 1
         });
 
+        var deviceToRemove = devices.FirstOrDefault(d => d.Serial.Equals(newDevice.Serial, StringComparison.OrdinalIgnoreCase));
+        if (deviceToRemove != null)
+        {
+            devices.Remove(deviceToRemove);
+        }
+
         newDevice = new NewDeviceModel();
+
+        StateHasChanged();
     }
 
     protected async override void OnInitialized()
@@ -123,27 +129,6 @@
 
             StateHasChanged();
         });
-    }
-
-    private async Task AddClick(HomeWizardDevice device)
-    {
-        await deviceRepository.AddDevice(new DeviceModel()
-        {
-            Serial = device.Serial,
-            ProductType = device.ProductType,
-            ProductName = device.ProductName,
-            DisplayName = device.ProductName,
-            IpAddress = device.Addresses.First().ToString(),
-            Track = 1
-        });
-
-        var deviceToRemove = devices.FirstOrDefault(d => d.Serial.Equals(device.Serial, StringComparison.OrdinalIgnoreCase));
-        if (deviceToRemove != null)
-        {
-            devices.Remove(deviceToRemove);
-        }
-
-        StateHasChanged();
     }
 
     public void Dispose()
