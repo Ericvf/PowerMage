@@ -1,3 +1,10 @@
+:root {
+    --power-import: #b100ff;
+    --power-export: #04DE71;
+    --gas-color: #E60067;
+    --water-color: #37BAFF;
+}
+
 h1:focus {
     outline: none;
 }
@@ -48,7 +55,7 @@ h1:focus {
 }
 
 .chartblock h4 {
-    color: rgb(177, 0, 255);
+    color: var(--power-import);
 }
 
 .chartblock h6 {
@@ -119,7 +126,7 @@ h1:focus {
 
 .power-line {
     fill: none;
-    stroke: rgb(177, 0, 255);
+    stroke: var(--power-import);
     stroke-width: 2;
     stroke-linecap: round;
     stroke-linejoin: round;
@@ -132,7 +139,7 @@ h1:focus {
 }
 .power-import-line {
     fill: none;
-    stroke: #04DE71;
+    stroke: var(--power-export);
     stroke-width: 2;
     stroke-linecap: round;
     stroke-linejoin: round;
@@ -156,11 +163,11 @@ h1:focus {
 
 
 .chartblock .import-color {
-    color: rgb(177, 0, 255);
+    color: var(--power-import);
 }
 
 .chartblock .export-color {
-    color: #04DE71;
+    color: var(--power-export);
 }
 
 .zero-line {
@@ -170,12 +177,12 @@ h1:focus {
 }
 
 .chartblock .gas-color {
-    color: #E60067;
+    color: var(--gas-color);
 }
 
 .gas-line {
     fill: none;
-    stroke: #E60067;
+    stroke: var(--gas-color);
     stroke-width: 2;
     stroke-linecap: round;
     stroke-linejoin: round;
@@ -188,12 +195,12 @@ h1:focus {
 }
 
 .chartblock .water-color {
-    color: #37BAFF;
+    color: var(--water-color);
 }
 
 .water-line {
     fill: none;
-    stroke: #37BAFF;
+    stroke: var(--water-color);
     stroke-width: 2;
     stroke-linecap: round;
     stroke-linejoin: round;
