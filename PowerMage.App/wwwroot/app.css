@@ -272,6 +272,6 @@ body > footer {
     padding-block: 0;
 }
 
-.arrow {
-    font-family: Symbola, monospace;
+.chart-loader {
+    margin-left:10px;
 }

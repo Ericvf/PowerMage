@@ -1,22 +1,24 @@
-﻿@inject DeviceRepository deviceRepository
+﻿@implements IDisposable
+@inject DeviceRepository deviceRepository
 
 <div class="chartblock">
     <div class="title">
         <span class="import-color">
             <ArrowDown />
-            @Math.Round(totalPowerImportKwh, 2) <span class="small">Kwh</span></span>
+            @Math.Round(totalPowerImportKwh, 2) <span class="small">Kwh</span>
+        </span>
         <span class="export-color">
             <ArrowUp />
-            @Math.Round(totalPowerExportKwh, 2) <span class="small">Kwh</span>
+            @Math.Round(totalPowerExportKwh, 2) <span class="small">Kwh </span>
         </span>
+        @if (IsLoading)
+        {
+            <span aria-busy="true" class="chart-loader"></span>
+        }
     </div>
     <h6>@Device?.DisplayName</h6>
-   
-    @if (IsLoading)
-    {
-        <p>Loading...</p>
-    }
-    else if (chartData.Count() == 0)
+
+    @if (chartData.Count() == 0)
     {
         <p>No data found.</p>
     }
@@ -33,6 +35,7 @@
     [Parameter]
     public DeviceModel? Device { get; set; }
 
+    private readonly PeriodicTimer periodicTimer = new(TimeSpan.FromSeconds(30));
     private IEnumerable<DeviceP1EnergyAggregate> chartData = [];
     private double totalPowerImportKwh = 0;
     private double totalPowerExportKwh = 0;
@@ -40,10 +43,27 @@
 
     protected override async Task OnInitializedAsync()
     {
+        await RefreshData();
+        RunTimer();
+    }
+
+    protected async void RunTimer()
+    {
+        while (await periodicTimer.WaitForNextTickAsync())
+        {
+            await RefreshData();
+        }
+    }
+
+    private async Task RefreshData()
+    {
         try
         {
             if (Device == null)
                 return;
+
+            IsLoading = true;
+            await InvokeAsync(StateHasChanged);
 
             var now = DateTime.UtcNow;
             var today = DateTime.Now.Date;
@@ -57,10 +77,12 @@
             chartData = chartDataTask.Result;
             totalPowerImportKwh = totalPowerImportKwhTask.Result;
             totalPowerExportKwh = totalPowerExportKwhTask.Result;
+
         }
         finally
         {
             IsLoading = false;
+            await InvokeAsync(StateHasChanged);
         }
     }
 
@@ -77,9 +99,7 @@
 
             .Select(x =>
             {
-                var minute =
-                    (x.IntervalStartUnix - dayStartUnix) / 60.0;
-
+                var minute = (x.IntervalStartUnix - dayStartUnix) / 60.0;
                 return new ChartPoint(minute, x.AvgActivePowerW!.Value);
             })
             .OrderBy(x => x.Minute)
@@ -102,5 +122,19 @@
             .Select(x => x.AvgActivePowerW!.Value)
             .DefaultIfEmpty(0)
             .Min();
+    }
+    
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            periodicTimer.Dispose();
+        }
     }
 }

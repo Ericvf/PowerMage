@@ -1,4 +1,5 @@
-﻿@implements IDisposable
+﻿@using System.ComponentModel.DataAnnotations
+@implements IDisposable
 
 @inject IHomewizardDiscovery Discovery
 @inject DeviceRepository deviceRepository
@@ -6,33 +7,90 @@
 <h3>HomeWizard devices</h3>
 <h3>AddDevice</h3>
 
-@foreach (var device in devices.Where(d => d.ApiEnabled))
-{
-    <ul>
-        <li> @device.Serial </li>
-        <li> @device.ProductType </li>
-        <li> @device.ProductName </li>
-        <li> @device.ApiPath</li>
-        <li> @device.ApiEnabled </li>
-        <li> @device.HostName </li>
-        <li> @device.Port </li>
-        <li> @device.ServiceName </li>
-        <li>
-            <ul>
-                @foreach (var ip in device.Addresses)
-                {
-                    <li> @ip </li>
-                }
-            </ul>
-        </li>
-        <button @onclick="() => AddClick(device)">Add Device</button>
-    </ul>
-}
+
+<EditForm Model="newDevice" OnValidSubmit="Submit">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <InputSelect @bind-Value="newDevice.DeviceId" @bind-Value:after="OnDeviceChanged">
+        <option selected disabled value="">
+            Select a device...
+        </option>
+        @foreach (var device in devices.Where(d => d.ApiEnabled))
+        {
+            <option value="@device.Serial">[@device.Serial] @device.ProductType (@device.Addresses.FirstOrDefault()?.ToString())</option>
+        }
+    </InputSelect>
+
+    <label>
+        Serial
+        <InputText @bind-Value="newDevice.Serial" />
+    </label>
+    <label>
+        ProductType
+        <InputText @bind-Value="newDevice.ProductType" />
+    </label>
+    <label>
+        ProductName
+        <InputText @bind-Value="newDevice.ProductName" />
+    </label>
+    <label>
+        DisplayName
+        <InputText @bind-Value="newDevice.DisplayName" />
+    </label>
+    <label>
+        IpAddress
+        <InputText @bind-Value="newDevice.IpAddress" />
+    </label>
+
+    <button type="submit">
+        ➕ Add Entry
+    </button>
+</EditForm>
+
 
 @code {
     private readonly List<HomeWizardDevice> devices = [];
     private IEnumerable<DeviceModel> existingDevices = new List<DeviceModel>();
     private CancellationTokenSource? cancellationTokenSource;
+    private NewDeviceModel newDevice = new();
+
+    public class NewDeviceModel
+    {
+        public int Id { get; set; }
+
+        public string? DeviceId { get; set; }
+
+        public string Serial { get; set; } = "";
+
+        public string ProductType { get; set; } = "";
+
+        public string ProductName { get; set; } = "";
+
+        [Required(ErrorMessage = "DisplayName is required")]
+        [StringLength(200, MinimumLength = 1, ErrorMessage = "DisplayName must be between 1 and 200 characters")]
+        public string DisplayName { get; set; } = "";
+
+        [Required(ErrorMessage = "Ip Address is required")]
+        [StringLength(200, MinimumLength = 1, ErrorMessage = "Ip Address must be between 1 and 200 characters")]
+        public string IpAddress { get; set; } = "";
+
+    }
+
+    private async Task Submit()
+    {
+        await deviceRepository.AddDevice(new DeviceModel()
+        {
+            Serial = newDevice.Serial,
+            ProductType = newDevice.ProductType,
+            ProductName = newDevice.ProductName,
+            DisplayName = newDevice.DisplayName,
+            IpAddress = newDevice.IpAddress,
+            Track = 1
+        });
+
+        newDevice = new NewDeviceModel();
+    }
 
     protected async override void OnInitialized()
     {
@@ -78,6 +136,14 @@
             IpAddress = device.Addresses.First().ToString(),
             Track = 1
         });
+
+        var deviceToRemove = devices.FirstOrDefault(d => d.Serial.Equals(device.Serial, StringComparison.OrdinalIgnoreCase));
+        if (deviceToRemove != null)
+        {
+            devices.Remove(deviceToRemove);
+        }
+
+        StateHasChanged();
     }
 
     public void Dispose()
@@ -86,5 +152,20 @@
 
         cancellationTokenSource?.Cancel();
         cancellationTokenSource?.Dispose();
+    }
+
+    private void OnDeviceChanged()
+    {
+        if (newDevice.DeviceId != null)
+        {
+            var device = devices.FirstOrDefault(d => d.Serial == newDevice.DeviceId);
+            if (device != null)
+            {
+                newDevice.Serial = device.Serial;
+                newDevice.ProductType = device.ProductType;
+                newDevice.ProductName = device.ProductName;
+                newDevice.IpAddress = device.Addresses.FirstOrDefault()?.ToString() ?? string.Empty;
+            }
+        }
     }
 }
