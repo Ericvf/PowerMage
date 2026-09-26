@@ -93,12 +93,12 @@
                         if (isNegative)
                         {
                             <path d="@BuildFilledPath(segment)" class="@($"{CssColorClass}-import-fill")" />
-                            <path d="@BuildSmoothPath(segment)" class="@($"{CssColorClass}-import-line")" />
+                            <path d="@BuildSmoothPath(segment)" class="@($"chart-line {CssColorClass}-import-line")" />
                         }
                         else
                         {
                             <path d="@BuildFilledPath(segment)" class="@($"{CssColorClass}-fill")" />
-                            <path d="@BuildSmoothPath(segment)" class="@($"{CssColorClass}-line")" />
+                            <path d="@BuildSmoothPath(segment)" class="@($"chart-line {CssColorClass}-line")" />
                         }
                     }
                 }

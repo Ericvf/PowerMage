@@ -124,26 +124,33 @@ h1:focus {
     vector-effect: non-scaling-stroke;
 }
 
-.power-line {
-    fill: none;
-    stroke: var(--power-import);
+.chart-line {
+    stroke: red;
     stroke-width: 2;
     stroke-linecap: round;
     stroke-linejoin: round;
     vector-effect: non-scaling-stroke;
+    fill: none;
+}
+
+@media (orientation: portrait) {
+    .chart-line {
+        stroke-width: 1;
+    }
+}
+
+
+.power-line {
+    stroke: var(--power-import);
 }
 
 .power-fill {
     fill: url(#power-fill);
     stroke: none;
 }
+
 .power-import-line {
-    fill: none;
     stroke: var(--power-export);
-    stroke-width: 2;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-    vector-effect: non-scaling-stroke;
 }
 
 .power-import-fill {
@@ -151,6 +158,23 @@ h1:focus {
     stroke: none;
 }
 
+.gas-line {
+    stroke: var(--gas-color);
+}
+
+.gas-fill {
+    fill: url(#gas-fill);
+    stroke: none;
+}
+
+.water-line {
+    stroke: var(--water-color);
+}
+
+.water-fill {
+    fill: url(#water-fill);
+    stroke: none;
+}
 
 .chartblock .title {
     font-weight: 500;
@@ -180,37 +204,12 @@ h1:focus {
     color: var(--gas-color);
 }
 
-.gas-line {
-    fill: none;
-    stroke: var(--gas-color);
-    stroke-width: 2;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-    vector-effect: non-scaling-stroke;
-}
-
-.gas-fill {
-    fill: url(#gas-fill);
-    stroke: none;
-}
 
 .chartblock .water-color {
     color: var(--water-color);
 }
 
-.water-line {
-    fill: none;
-    stroke: var(--water-color);
-    stroke-width: 2;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-    vector-effect: non-scaling-stroke;
-}
 
-.water-fill {
-    fill: url(#water-fill);
-    stroke: none;
-}
 
 .y-labels {
     position: relative;
@@ -264,11 +263,12 @@ h2 {
     margin-top: 1em;
     margin-bottom: 1em;
 }
+
 body > footer {
     text-align: center;
-    margin:5px;
-    padding:0;
-    padding-block:0;
+    margin: 5px;
+    padding: 0;
+    padding-block: 0;
 }
 
 .arrow {
