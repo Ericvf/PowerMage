@@ -41,7 +41,7 @@
                             <td class="small">
                                 @if (i > 0)
                                 {
-                                    <button class="small" @onclick="() => MoveDeviceUp(device, prevDevice)">
+                                    <button class="small" @onclick="() => MoveDeviceUp(device, prevDevice!)">
                                         <ArrowUp />
                                     </button>
                                 }
@@ -50,7 +50,7 @@
                             <td class="small">
                                 @if (i < total - 1)
                                 {
-                                    <button class="small" @onclick="() => MoveDeviceDown(device, nextDevice)">
+                                    <button class="small" @onclick="() => MoveDeviceDown(device, nextDevice!)">
                                         <ArrowDown />
                                     </button>
                                 }
@@ -77,11 +77,11 @@
             <h3>Add Device</h3>
         </header>
 
-        <EditForm Model="newDevice" OnValidSubmit="Submit">
+        <EditForm Model="newDevice" OnValidSubmit="SubmitNewDevice">
             <DataAnnotationsValidator />
             <ValidationSummary />
 
-            <InputSelect @bind-Value="newDevice.DeviceId" @bind-Value:after="OnDeviceChanged">
+            <InputSelect @bind-Value="newDevice.DeviceId" @bind-Value:after="OnDeviceSelected">
                 <option selected disabled value="">
                     Select a device...
                 </option>
@@ -151,31 +151,6 @@
 
     }
 
-    private async Task Submit()
-    {
-        await deviceRepository.AddDevice(new DeviceModel()
-        {
-            Serial = newDevice.Serial,
-            ProductType = newDevice.ProductType,
-            ProductName = newDevice.ProductName,
-            DisplayName = newDevice.DisplayName,
-            IpAddress = newDevice.IpAddress,
-            Track = 1,
-            Order = existingDevices.Count() + 1
-        });
-
-        var deviceToRemove = devices.FirstOrDefault(d => d.Serial.Equals(newDevice.Serial, StringComparison.OrdinalIgnoreCase));
-        if (deviceToRemove != null)
-        {
-            devices.Remove(deviceToRemove);
-        }
-
-        newDevice = new NewDeviceModel();
-        existingDevices = await deviceRepository.GetDevices();
-
-        StateHasChanged();
-    }
-
     protected async override void OnInitialized()
     {
         existingDevices = await deviceRepository.GetDevices();
@@ -209,15 +184,7 @@
         });
     }
 
-    public void Dispose()
-    {
-        Discovery.DeviceDiscovered -= OnDeviceDiscovered;
-
-        cancellationTokenSource?.Cancel();
-        cancellationTokenSource?.Dispose();
-    }
-
-    private void OnDeviceChanged()
+    private void OnDeviceSelected()
     {
         if (newDevice.DeviceId != null)
         {
@@ -232,6 +199,31 @@
         }
     }
 
+    private async Task SubmitNewDevice()
+    {
+        await deviceRepository.AddDevice(new DeviceModel()
+        {
+            Serial = newDevice.Serial,
+            ProductType = newDevice.ProductType,
+            ProductName = newDevice.ProductName,
+            DisplayName = newDevice.DisplayName,
+            IpAddress = newDevice.IpAddress,
+            Track = 1,
+            Order = existingDevices.Count() + 1
+        });
+
+        var deviceToRemove = devices.FirstOrDefault(d => d.Serial.Equals(newDevice.Serial, StringComparison.OrdinalIgnoreCase));
+        if (deviceToRemove != null)
+        {
+            devices.Remove(deviceToRemove);
+        }
+
+        newDevice = new NewDeviceModel();
+        existingDevices = await deviceRepository.GetDevices();
+
+        StateHasChanged();
+    }
+
     private async Task MoveDeviceUp(DeviceModel device, DeviceModel prevDevice)
     {
         await deviceRepository.UpdateDeviceOrder(device.Id, prevDevice.Order, prevDevice.Id, device.Order);
@@ -244,5 +236,13 @@
         await deviceRepository.UpdateDeviceOrder(device.Id, nextDevice.Order, nextDevice.Id, device.Order);
         existingDevices = await deviceRepository.GetDevices();
         StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        Discovery.DeviceDiscovered -= OnDeviceDiscovered;
+
+        cancellationTokenSource?.Cancel();
+        cancellationTokenSource?.Dispose();
     }
 }
