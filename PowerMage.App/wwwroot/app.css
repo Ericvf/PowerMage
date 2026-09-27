@@ -254,9 +254,11 @@ h1:focus {
 }
 
 /* General */
-body > header{
-    padding:0;
-    margin:10px 10px 0px 10px;
+body > header {
+    padding: 0;
+    margin: 10px 10px 0px 10px;
+    display: flex;
+    align-items: center;
 }
     body > header h2 {
         margin-left: auto;
@@ -274,4 +276,27 @@ body > footer {
 
 .chart-loader {
     margin-left:10px;
+}
+
+/* Forms*/
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.form-row label {
+    margin-bottom: 0;
+}
+
+button.small {
+    padding: 0.25rem 0.5rem;
+    margin: 5px;
+}
+
+th.small, td.small {
+    width: 0px;
+    margin: 0;
+    padding: 0;
 }

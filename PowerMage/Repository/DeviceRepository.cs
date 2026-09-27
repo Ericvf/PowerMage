@@ -16,7 +16,7 @@ public class DeviceRepository
     {
         using var connection = await sqlLiteService.CreateOpenConnection();
 
-        return await connection.QueryAsync<DeviceModel>(
+        var devices = await connection.QueryAsync<DeviceModel>(
             """
                 SELECT
                     Id,
@@ -25,10 +25,46 @@ public class DeviceRepository
                     ProductName,
                     DisplayName,
                     IpAddress,
-                    Track
+                    Track, 
+                    [Order]
+
                 FROM Device
-                ORDER BY DisplayName
+                ORDER BY [Order], DisplayName
             """);
+
+        int no = 1;
+        foreach (var device in devices)
+        {
+            device.Order = no++;
+        }
+
+        return devices;
+    }
+
+    public async Task UpdateDeviceOrder(int firstDeviceId,int firstOrder,int secondDeviceId,int secondOrder)
+    {
+        using var connection = await sqlLiteService.CreateOpenConnection();
+        using var transaction = connection.BeginTransaction();
+
+        await connection.ExecuteAsync(
+            """
+            UPDATE Device
+            SET [Order] = CASE
+                WHEN Id = @FirstId THEN @FirstOrder
+                WHEN Id = @SecondId THEN @SecondOrder
+            END
+            WHERE Id IN (@FirstId, @SecondId);
+            """,
+            new
+            {
+                FirstId = firstDeviceId,
+                FirstOrder = firstOrder,
+                SecondId = secondDeviceId,
+                SecondOrder = secondOrder
+            },
+            transaction);
+
+        transaction.Commit();
     }
 
     public async Task<DeviceModel> AddDevice(DeviceModel device)
@@ -37,8 +73,8 @@ public class DeviceRepository
 
         await connection.ExecuteAsync(
             """
-                INSERT INTO Device (Serial, ProductType, ProductName, DisplayName, IpAddress, Track)
-                VALUES (@Serial, @ProductType, @ProductName, @DisplayName, @IpAddress, @Track)
+                INSERT INTO Device (Serial, ProductType, ProductName, DisplayName, IpAddress, Track, [Order])
+                VALUES (@Serial, @ProductType, @ProductName, @DisplayName, @IpAddress, @Track, @Order)
             """, device);
 
         return device;
@@ -395,7 +431,7 @@ public class DeviceRepository
         return totalGas ?? 0;
     }
 
-    public async Task<double> GetTotalWaterConsumed(int deviceId,DateTime from,DateTime to,CancellationToken cancellationToken = default)
+    public async Task<double> GetTotalWaterConsumed(int deviceId, DateTime from, DateTime to, CancellationToken cancellationToken = default)
     {
         using var connection = await sqlLiteService.CreateOpenConnection();
 
@@ -832,6 +868,7 @@ public class DeviceModel
     public required string DisplayName { get; set; }
     public required string IpAddress { get; set; }
     public int Track { get; set; } = 0;
+    public int Order { get; set; } = 0;
 }
 
 public class DeviceP1EnergyModel

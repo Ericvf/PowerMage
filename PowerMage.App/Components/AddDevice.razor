@@ -1,51 +1,127 @@
 ﻿@using System.ComponentModel.DataAnnotations
+@using PowerMage.Components.Charts
 @implements IDisposable
 
 @inject IHomewizardDiscovery Discovery
 @inject DeviceRepository deviceRepository
 
-<h3>Add Device</h3>
+<section id="tables">
+    <h2>Devices</h2>
+    <div class="overflow-auto">
+        <table class="striped">
+            <thead>
+                <tr>
+                    <th scope="col">#</th>
+                    <th scope="col">Serial</th>
+                    <th scope="col">Product Type</th>
+                    <th scope="col">Product Name</th>
+                    <th scope="col">Display Name</th>
+                    <th scope="col">IP Address</th>
+                    <th class="small" />
+                    <th class="small" />
+                </tr>
+            </thead>
+            <tbody>
+                @{
+                    var existingDeviceArray = existingDevices.ToArray();
+                    var total = existingDeviceArray.Length;
 
-<EditForm Model="newDevice" OnValidSubmit="Submit">
-    <DataAnnotationsValidator />
-    <ValidationSummary />
+                    for (int i = 0; i < total; i++)
+                    {
+                        var prevDevice = i > 0 ? existingDeviceArray[i - 1] : null;
+                        var device = existingDeviceArray[i];
+                        var nextDevice = i < total - 1 ? existingDeviceArray[i + 1] : null;
+                        <tr>
+                            <td>@device.Order</td>
+                            <td>@device.Serial</td>
+                            <td>@device.ProductType</td>
+                            <td>@device.ProductName</td>
+                            <td>@device.DisplayName</td>
+                            <td>@device.IpAddress</td>
+                            <td class="small">
+                                @if (i > 0)
+                                {
+                                    <button class="small" @onclick="() => MoveDeviceUp(device, prevDevice)">
+                                        <ArrowUp />
+                                    </button>
+                                }
 
-    <InputSelect @bind-Value="newDevice.DeviceId" @bind-Value:after="OnDeviceChanged">
-        <option selected disabled value="">
-            Select a device...
-        </option>
-        @foreach (var device in devices.Where(d => d.ApiEnabled))
-        {
-            <option value="@device.Serial">[@device.Serial] @device.ProductType (@device.Addresses.FirstOrDefault()?.ToString())</option>
-        }
-    </InputSelect>
+                            </td>
+                            <td class="small">
+                                @if (i < total - 1)
+                                {
+                                    <button class="small" @onclick="() => MoveDeviceDown(device, nextDevice)">
+                                        <ArrowDown />
+                                    </button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
 
-    <label>
-        Serial
-        <InputText @bind-Value="newDevice.Serial" />
-    </label>
-    <label>
-        ProductType
-        <InputText @bind-Value="newDevice.ProductType" />
-    </label>
-    <label>
-        ProductName
-        <InputText @bind-Value="newDevice.ProductName" />
-    </label>
-    <label>
-        DisplayName
-        <InputText @bind-Value="newDevice.DisplayName" />
-    </label>
-    <label>
-        IpAddress
-        <InputText @bind-Value="newDevice.IpAddress" />
-    </label>
-
-    <button type="submit">
-        ➕ Add device
+    <button class="secondary small" data-target="form-dialog" onclick="toggleModal(event)">
+        ➕ Add new device
     </button>
-</EditForm>
+</section>
 
+<dialog id="form-dialog">
+    <article>
+        <header>
+            <button aria-label="Close"
+                    rel="prev"
+                    data-target="form-dialog"
+                    onclick="toggleModal(event)"></button>
+            <h3>Add Device</h3>
+        </header>
+
+        <EditForm Model="newDevice" OnValidSubmit="Submit">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+
+            <InputSelect @bind-Value="newDevice.DeviceId" @bind-Value:after="OnDeviceChanged">
+                <option selected disabled value="">
+                    Select a device...
+                </option>
+                @foreach (var device in devices.Where(d => d.ApiEnabled))
+                {
+                    <option value="@device.Serial">[@device.Serial] @device.ProductType (@device.Addresses.FirstOrDefault()?.ToString())</option>
+                }
+            </InputSelect>
+
+            <div class="form-row">
+                <label>
+                    Serial
+                    <InputText @bind-Value="newDevice.Serial" />
+                </label>
+                <label>
+                    ProductType
+                    <InputText @bind-Value="newDevice.ProductType" />
+                </label>
+            </div>
+            <div class="form-row">
+                <label>
+                    ProductName
+                    <InputText @bind-Value="newDevice.ProductName" />
+                </label>
+                <label>
+                    DisplayName
+                    <InputText @bind-Value="newDevice.DisplayName" />
+                </label>
+            </div>
+            <label>
+                IpAddress
+                <InputText @bind-Value="newDevice.IpAddress" />
+            </label>
+
+            <button type="submit">
+                ➕ Add device
+            </button>
+        </EditForm>
+    </article>
+</dialog>
 
 @code {
     private readonly List<HomeWizardDevice> devices = [];
@@ -84,7 +160,8 @@
             ProductName = newDevice.ProductName,
             DisplayName = newDevice.DisplayName,
             IpAddress = newDevice.IpAddress,
-            Track = 1
+            Track = 1,
+            Order = existingDevices.Count() + 1
         });
 
         var deviceToRemove = devices.FirstOrDefault(d => d.Serial.Equals(newDevice.Serial, StringComparison.OrdinalIgnoreCase));
@@ -94,6 +171,7 @@
         }
 
         newDevice = new NewDeviceModel();
+        existingDevices = await deviceRepository.GetDevices();
 
         StateHasChanged();
     }
@@ -152,5 +230,19 @@
                 newDevice.IpAddress = device.Addresses.FirstOrDefault()?.ToString() ?? string.Empty;
             }
         }
+    }
+
+    private async Task MoveDeviceUp(DeviceModel device, DeviceModel prevDevice)
+    {
+        await deviceRepository.UpdateDeviceOrder(device.Id, prevDevice.Order, prevDevice.Id, device.Order);
+        existingDevices = await deviceRepository.GetDevices();
+        StateHasChanged();
+    }
+
+    private async Task MoveDeviceDown(DeviceModel device, DeviceModel nextDevice)
+    {
+        await deviceRepository.UpdateDeviceOrder(device.Id, nextDevice.Order, nextDevice.Id, device.Order);
+        existingDevices = await deviceRepository.GetDevices();
+        StateHasChanged();
     }
 }

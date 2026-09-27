@@ -47,7 +47,8 @@ public class SqlLiteService
                     ProductName TEXT,
                     DisplayName TEXT,
                     IpAddress TEXT,
-                    Track INTEGER
+                    Track INTEGER,
+                    Order INTEGER NOT NULL DEFAULT 0
                 );
             
                 CREATE TABLE IF NOT EXISTS DeviceEnergy (
@@ -163,6 +164,36 @@ public class SqlLiteService
             """;
 
 
-        return command.ExecuteNonQueryAsync();
+        command.ExecuteNonQueryAsync();
+
+        using var checkCommand = connection.CreateCommand();
+        checkCommand.CommandText = "PRAGMA table_info(Device);";
+
+        var hasOrderColumn = false;
+
+        using (var reader = checkCommand.ExecuteReader())
+        {
+            while (reader.Read())
+            {
+                if (reader.GetString(1) == "Order")
+                {
+                    hasOrderColumn = true;
+                    break;
+                }
+            }
+        }
+
+        if (!hasOrderColumn)
+        {
+            using var alterCommand = connection.CreateCommand();
+            alterCommand.CommandText = """
+                ALTER TABLE Device
+                ADD COLUMN "Order" INTEGER NOT NULL DEFAULT 0;
+                """;
+
+            alterCommand.ExecuteNonQuery();
+        }
+
+        return Task.CompletedTask;
     }
 }

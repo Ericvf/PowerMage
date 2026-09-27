@@ -3,7 +3,7 @@
 @inject DeviceRepository deviceRepository
 @inject NavigationManager Navigation
 
-<PageTitle>PowerMage⚡ - Dashboard</PageTitle>
+<PageTitle>Dashboard</PageTitle>
 
 @if (IsLoading)
 {
@@ -25,8 +25,8 @@ else if (!Devices.Any())
 }
 else
 {
-    <header style="display: flex; align-items: center;">
-        <button class="secondary outline" onclick="@(() => Navigation.NavigateTo("/Devices", false))"><small>➕ Add device</small></button>
+    <header>
+        <button class="secondary outline small" onclick="@(() => Navigation.NavigateTo("/Settings", false))"><small>⚙️ Settings</small></button>
         <h2>Power Mage⚡️</h2>
     </header>
 
