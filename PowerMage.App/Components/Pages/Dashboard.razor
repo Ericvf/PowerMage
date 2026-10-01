@@ -21,7 +21,7 @@ else if (!Devices.Any())
             <h2>Welcome to Power Mage ⚡</h2>
             <p>It appears you have not added any devices yet. Use the button above to add devices to Power Mage.</p>
         </article>
-    </main>  
+    </main>
 }
 else
 {
@@ -34,26 +34,46 @@ else
     {
         if (device.ProductType == "HWE-SKT")
         {
-            <SKTChart Day="@Today" Device="@device" />
+            <SKTChart Day="@Today" Device="@device" View="View" />
         }
         else if (device.ProductType == "HWE-P1")
         {
-            <P1Chart Day="@Today" Device="@device" />
-            <P1GasChart Day="@Today" Device="@device" />
+            <P1Chart Day="@Today" Device="@device" View="View" />
+            <P1GasChart Day="@Today" Device="@device" View="View" />
         }
         else if (device.ProductType == "HWE-WTR")
         {
-            <WaterChart Day="@Today" Device="@device" />
+            <WaterChart Day="@Today" Device="@device" View="View"/>
         }
     }
 }
+
+<div class="container navigator">
+    <div class="title">
+        <h6>
+            <button class="small outline" @onclick="SelectPrev">⏴</button>
+            @Today.ToLongDateString()
+            <button class="small outline" @onclick="SelectNext">⏵</button>
+        </h6>
+    </div>
+
+    <div role="group" class="buttons">
+        <button class="small @(View!= ChartBase.Views.Day ? "outline" : "")" style="margin:0" @onclick="SelectDay">Day</button>
+        <button class="small @(View != ChartBase.Views.Week ? "outline" : "")" style="margin:0" @onclick="SelectWeek">Week</button>
+        <button class="small @(View != ChartBase.Views.Month ? "outline" : "")" style="margin:0" @onclick="SelectMonth">Month</button>
+    </div>
+</div>
 
 <footer>
     <img src="/appbyfex.png" />
 </footer>
 
 @code {
-    private DateTime Today = DateTime.Today;
+
+
+    private DateTime Today = DateTime.Today.AddDays(-3);
+    private ChartBase.Views View = ChartBase.Views.Day;
+
     private bool IsLoading = true;
 
     private IEnumerable<DeviceModel> Devices = [];
@@ -76,6 +96,67 @@ else
                 IsLoading = false;
                 StateHasChanged();
             }
+        }
+    }
+
+    private void SelectDay()
+    {
+        Today = DateTime.Today;
+        View = ChartBase.Views.Day;
+        StateHasChanged();
+    }
+
+    private void SelectWeek()
+    {
+        Today = StartOfWeek(Today, DayOfWeek.Monday);
+        View = ChartBase.Views.Week;
+        StateHasChanged();
+    }
+
+    private void SelectMonth()
+    {
+        Today = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+        View = ChartBase.Views.Month;
+        StateHasChanged();
+    }
+
+    public static DateTime StartOfWeek(DateTime dt, DayOfWeek startOfWeek)
+    {
+        int diff = (7 + (dt.DayOfWeek - startOfWeek)) % 7;
+        return dt.AddDays(-1 * diff).Date;
+    }
+
+    private void SelectPrev()
+    {
+        switch (View)
+        {
+            case ChartBase.Views.Day:
+                Today = Today.AddDays(-1);
+                break;
+
+            case ChartBase.Views.Week:
+                Today = Today.AddDays(-7);
+                break;
+            case ChartBase.Views.Month:
+                Today = Today.AddMonths(-1);
+                break;
+        }
+    }
+
+    private void SelectNext()
+    {
+        switch (View)
+        {
+            case ChartBase.Views.Day:
+                Today = Today.AddDays(1);
+                break;
+
+            case ChartBase.Views.Week:
+                Today = Today.AddDays(7);
+                break;
+            case ChartBase.Views.Month:
+                Today = Today.AddMonths(1);
+                break;
         }
     }
 }

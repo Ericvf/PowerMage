@@ -1,3 +1,4 @@
-﻿namespace PowerMage.Components;
+﻿namespace PowerMage.Components.Charts;
 
-public record ChartPoint(double Minute, double Watts);
+public record ChartPoint(double Minute, double Watts, long title);
+

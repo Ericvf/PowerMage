@@ -1,4 +1,5 @@
-﻿@implements IDisposable
+﻿@inherits ChartBase
+@implements IDisposable
 @inject DeviceRepository deviceRepository
 
 <div class="chartblock">
@@ -9,42 +10,35 @@
         </span>
         <span class="export-color">
             <ArrowUp />
-            @Math.Round(totalPowerExportKwh, 2) <span class="small">Kwh </span>
+            @Math.Round(totalPowerExportKwh, 2) <span class="small">Kwh</span>
         </span>
-        @if (IsLoading)
+        @if (isLoading)
         {
             <span aria-busy="true" class="chart-loader"></span>
         }
     </div>
     <h6>@Device?.DisplayName</h6>
 
-    @if (chartData.Count() == 0)
-    {
-        <p>No data found.</p>
-    }
-    else
-    {
-        <EnergyChart Day="Day" GetChartPoints="GetChartPoints" GetMaxValues="GetMaxWatts" GetMinValues="GetMinWatts" />
-    }
+    <EnergyChart Day="Day" GetChartPoints="GetChartPoints" MomentsPerView="momentsPerView" XLabelFormat="@labelFormat" />
 </div>
 
 @code {
-    [Parameter]
-    public DateTime Day { get; set; }
-
-    [Parameter]
-    public DeviceModel? Device { get; set; }
-
     private readonly PeriodicTimer periodicTimer = new(TimeSpan.FromSeconds(30));
     private IEnumerable<DeviceP1EnergyAggregate> chartData = [];
+    private IEnumerable<DeviceP1EnergyAggregateImportExport> chartData2 = [];
     private double totalPowerImportKwh = 0;
     private double totalPowerExportKwh = 0;
-    private bool IsLoading = true;
+    private bool isLoading = true;
+    private DateTime to;
 
-    protected override async Task OnInitializedAsync()
+    protected override void OnInitialized()
+    {
+        RunTimer();
+    }
+
+    protected override async Task OnParametersSetAsync()
     {
         await RefreshData();
-        RunTimer();
     }
 
     protected async void RunTimer()
@@ -59,71 +53,91 @@
     {
         try
         {
-            if (Device == null)
+            if (Device is null)
+            {
+                chartData = [];
+                totalPowerImportKwh = 0;
+                totalPowerExportKwh = 0;
                 return;
+            }
 
-            IsLoading = true;
+            isLoading = true;
             await InvokeAsync(StateHasChanged);
 
-            var now = DateTime.UtcNow;
-            var today = DateTime.Now.Date;
+            to = Day.Date == DateTime.Today
+                ? DateTime.UtcNow
+                : Day.AddDays(daysPerView);
 
-            var chartDataTask = deviceRepository.GetDeviceP1EnergyAggregates(Device.Id, today, now);
-            var totalPowerImportKwhTask = deviceRepository.GetTotalP1(Device.Id, today, now);
-            var totalPowerExportKwhTask = deviceRepository.GetTotalExportP1(Device.Id, today, now);
+            var totalPowerImportKwhTask = deviceRepository.GetTotalP1(Device.Id, Day, to);
+            var totalPowerExportKwhTask = deviceRepository.GetTotalExportP1(Device.Id, Day, to);
 
-            await Task.WhenAll(chartDataTask, totalPowerImportKwhTask, totalPowerExportKwhTask);
+            await Task.WhenAll(totalPowerImportKwhTask, totalPowerExportKwhTask);
 
-            chartData = chartDataTask.Result;
-            totalPowerImportKwh = totalPowerImportKwhTask.Result;
-            totalPowerExportKwh = totalPowerExportKwhTask.Result;
+            if (View != Views.Day)
+            {
+                chartData2 = await deviceRepository.GetDeviceP1EnergyAggregatesImportExport(Device.Id, Day, to, timeUnit);
+            }
+            else
+            {
+                chartData = await deviceRepository.GetDeviceP1EnergyAggregates(Device.Id, Day, to, timeUnit);
+            }
 
+            totalPowerImportKwh = await totalPowerImportKwhTask;
+            totalPowerExportKwh = await totalPowerExportKwhTask;
         }
         finally
         {
-            IsLoading = false;
+            isLoading = false;
             await InvokeAsync(StateHasChanged);
         }
     }
 
-    private List<ChartPoint> GetChartPoints()
+    private ChartSeries[] GetChartPoints()
     {
-        var dayStartUnix = new DateTimeOffset(Day).ToUnixTimeSeconds();
-        var dayEndUnix = dayStartUnix + 86400;
+        var startUnix = new DateTimeOffset(Day).ToUnixTimeSeconds();
+        var endUnix = new DateTimeOffset(to).ToUnixTimeSeconds();
 
-        var points = chartData
-            .Where(x =>
-                x.AvgActivePowerW.HasValue &&
-                x.IntervalStartUnix >= dayStartUnix &&
-                x.IntervalStartUnix < dayEndUnix)
+        if (View != Views.Day)
+        {
+            var importChartData = chartData2
+                                    .Where(x =>
+                                        x.ImportKwh.HasValue &&
+                                        x.IntervalStartUnix >= startUnix &&
+                                        x.IntervalStartUnix < endUnix)
+                                    .Select(x => new ChartPoint((x.IntervalStartUnix - startUnix) / timeUnit, x.ImportKwh!.Value, x.IntervalStartUnix))
+                                    .OrderBy(x => x.Minute)
+                                    .ToArray();
 
-            .Select(x =>
-            {
-                var minute = (x.IntervalStartUnix - dayStartUnix) / 60.0;
-                return new ChartPoint(minute, x.AvgActivePowerW!.Value);
-            })
-            .OrderBy(x => x.Minute)
-            .ToList();
+            var importSeries = new ChartSeries(ChartTypes.Bar, importChartData, "power");
 
-        return points;
+            var exportChartData = chartData2
+                        .Where(x =>
+                            x.ExportKwh.HasValue &&
+                            x.IntervalStartUnix >= startUnix &&
+                            x.IntervalStartUnix < endUnix)
+                        .Select(x => new ChartPoint((x.IntervalStartUnix - startUnix) / timeUnit, x.ExportKwh!.Value, x.IntervalStartUnix))
+                        .OrderBy(x => x.Minute)
+                        .ToArray();
+            var exportSeries = new ChartSeries(ChartTypes.Bar, exportChartData, "powerexport");
+
+            return [importSeries, exportSeries];
+        }
+        else
+        {
+            var chartPoints = chartData
+                        .Where(x =>
+                            x.AvgActivePowerW.HasValue &&
+                            x.IntervalStartUnix >= startUnix &&
+                            x.IntervalStartUnix < endUnix)
+                        .Select(x => new ChartPoint((x.IntervalStartUnix - startUnix) / timeUnit, x.AvgActivePowerW!.Value, x.IntervalStartUnix))
+                        .OrderBy(x => x.Minute)
+                        .ToArray();
+
+            var series = new ChartSeries(ChartTypes.Line, chartPoints, "power");
+            return [series];
+        }
     }
 
-    private double GetMaxWatts()
-    {
-        return chartData.Where(x => x.AvgActivePowerW.HasValue)
-            .Select(x => x.AvgActivePowerW!.Value)
-            .DefaultIfEmpty(0)
-            .Max();
-    }
-
-    private double GetMinWatts()
-    {
-        return chartData.Where(x => x.AvgActivePowerW.HasValue)
-            .Select(x => x.AvgActivePowerW!.Value)
-            .DefaultIfEmpty(0)
-            .Min();
-    }
-    
     public void Dispose()
     {
         Dispose(true);

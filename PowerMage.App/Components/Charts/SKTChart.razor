@@ -1,4 +1,5 @@
-﻿@inject DeviceRepository deviceRepository
+﻿@inherits ChartBase
+@inject DeviceRepository deviceRepository
 
 <div class="chartblock">
     <div class="title">
@@ -9,84 +10,70 @@
     </div>
     <h6>@Device?.DisplayName</h6>
 
-    @if (IsLoading)
+    @if (isLoading)
     {
         <p>Loading...</p>
     }
     else
     {
-        <EnergyChart Day="Day" GetChartPoints="GetChartPoints" GetMaxValues="GetMaxWatts" />
+        <EnergyChart Day="Day" GetChartPoints="GetChartPoints" MomentsPerView="momentsPerView" XLabelFormat="@labelFormat" />
     }
 </div>
 
 @code {
-    [Parameter]
-    public DateTime Day { get; set; }
-
-    [Parameter]
-    public DeviceModel? Device { get; set; }
-
     private IEnumerable<DeviceSKTEnergyAggregate> chartData = [];
     private double totalPowerImportKwh = 0;
-    private bool IsLoading = true;
+    private bool isLoading = true;
+    private DateTime to;
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnParametersSetAsync()
     {
         try
         {
-            if (Device == null)
+            if (Device is null)
+            {
+                chartData = [];
+                totalPowerImportKwh = 0;
                 return;
+            }
 
-            var now = DateTime.UtcNow;
-            var today = DateTime.Now.Date;
+            to = Day.Date == DateTime.Today
+              ? DateTime.UtcNow
+              : Day.AddDays(daysPerView);
 
-            var chartDataTask = deviceRepository.GetSKTDeviceEnergyAggregates(Device.Id, today, now);
-            var totalPowerImportKwhTask = deviceRepository.GetTotalPowerSKT(Device.Id, today, now);
+            if (View != Views.Day)
+            {
+                chartData = await deviceRepository.GetSKTDeviceEnergyKwhAggregates(Device.Id, Day, to, timeUnit);
+            }
+            else
+            {
+                chartData = await deviceRepository.GetSKTDeviceEnergyAggregates(Device.Id, Day, to, timeUnit);
+            }
 
-            await Task.WhenAll(chartDataTask, totalPowerImportKwhTask);
-
-            chartData = chartDataTask.Result;
-            totalPowerImportKwh = totalPowerImportKwhTask.Result;
+            totalPowerImportKwh = await deviceRepository.GetTotalPowerSKT(Device.Id, Day, to);
         }
         finally
         {
-            IsLoading = false;
+            isLoading = false;
         }
     }
 
 
-    private List<ChartPoint> GetChartPoints()
+    private ChartSeries[] GetChartPoints()
     {
-        var dayStartUnix = new DateTimeOffset(Day).ToUnixTimeSeconds();
-        var dayEndUnix = dayStartUnix + 86400;
+        var startUnix = new DateTimeOffset(Day).ToUnixTimeSeconds();
+        var endUnix = new DateTimeOffset(to).ToUnixTimeSeconds();
 
-        var points = chartData
+        var chartPoints = chartData
             .Where(x =>
                 x.AvgActivePowerW.HasValue &&
-                x.IntervalStartUnix >= dayStartUnix &&
-                x.IntervalStartUnix < dayEndUnix)
-
-            .Select(x =>
-            {
-                var minute =
-                    (x.IntervalStartUnix - dayStartUnix) / 60.0;
-
-                return new ChartPoint(
-                    minute,
-                    x.AvgActivePowerW!.Value);
-            })
-
+                x.IntervalStartUnix >= startUnix &&
+                x.IntervalStartUnix < endUnix)
+            .Select(x => new ChartPoint((x.IntervalStartUnix - startUnix) / timeUnit, x.AvgActivePowerW!.Value, x.IntervalStartUnix))
             .OrderBy(x => x.Minute)
-            .ToList();
-
-        return points;
-    }
-
-    private double GetMaxWatts()
-    {
-        return chartData.Where(x => x.AvgActivePowerW.HasValue)
-            .Select(x => x.AvgActivePowerW!.Value)
-            .DefaultIfEmpty(0)
-            .Max();
+            .ToArray();
+        var chartType = View == Views.Day ? ChartTypes.Line : ChartTypes.Bar;
+        var series = new ChartSeries(chartType, chartPoints, "power");
+        return [series];
     }
 }

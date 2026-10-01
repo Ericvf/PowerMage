@@ -80,24 +80,16 @@ public class DeviceRepository
         return device;
     }
 
-    public async Task<IEnumerable<DeviceSKTEnergyAggregate>> GetSKTDeviceEnergyAggregates(int deviceId, DateTime from, DateTime to, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<DeviceSKTEnergyAggregate>> GetSKTDeviceEnergyAggregates(int deviceId, DateTime from, DateTime to, int timeUnit = 300, CancellationToken cancellationToken = default)
     {
         const string sql = """
             SELECT
                 DeviceId,
-                (Timestamp / 300) * 300 AS IntervalStartUnix,
-                (Timestamp / 300) * 300 + 300 AS IntervalEndUnix,
+                @From + (((Timestamp - @From) / @TimeUnit) * @TimeUnit) AS IntervalStartUnix,
+                @From + (((Timestamp - @From) / @TimeUnit + 1) * @TimeUnit) AS IntervalEndUnix,
 
-                AVG(ActivePowerW) AS AvgActivePowerW,
-                MIN(ActivePowerW) AS MinActivePowerW,
-                MAX(ActivePowerW) AS MaxActivePowerW,
-
-                AVG(ActivePowerL1W) AS AvgActivePowerL1W,
-                AVG(ActiveVoltageV) AS AvgActiveVoltageV,
-                AVG(ActiveCurrentA) AS AvgActiveCurrentA,
-                AVG(ActivePowerFactor) AS AvgActivePowerFactor,
-
-                COUNT(ActivePowerW) AS SampleCount
+                
+            AVG(ActivePowerW) AS AvgActivePowerW
 
             FROM DeviceEnergy
 
@@ -107,7 +99,7 @@ public class DeviceRepository
 
             GROUP BY
                 DeviceId,
-                (Timestamp / 300)
+                (Timestamp - @From) / @TimeUnit
 
             ORDER BY IntervalStartUnix;
             """;
@@ -120,14 +112,58 @@ public class DeviceRepository
             {
                 DeviceId = deviceId,
                 From = ((DateTimeOffset)from.ToUniversalTime()).ToUnixTimeSeconds(),
-                To = ((DateTimeOffset)to.ToUniversalTime()).ToUnixTimeSeconds()
+                To = ((DateTimeOffset)to.ToUniversalTime()).ToUnixTimeSeconds(),
+                TimeUnit = timeUnit
             },
             cancellationToken: cancellationToken);
 
         return await connection.QueryAsync<DeviceSKTEnergyAggregate>(command);
     }
 
-    public async Task<IEnumerable<DeviceP1EnergyAggregate>> GetDeviceP1EnergyAggregates(int deviceId, DateTime from, DateTime to, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<DeviceSKTEnergyAggregate>> GetSKTDeviceEnergyKwhAggregates(int deviceId, DateTime from, DateTime to, int timeUnit = 300, CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            SELECT
+                DeviceId,
+                @From + (((Timestamp - @From) / @TimeUnit) * @TimeUnit) AS IntervalStartUnix,
+                @From + (((Timestamp - @From) / @TimeUnit + 1) * @TimeUnit) AS IntervalEndUnix,
+
+                
+              (COALESCE(MAX(TotalPowerImportKwh) - MIN(TotalPowerImportKwh), 0) 
+              - 
+              COALESCE(MAX(TotalPowerExportKwh) - MIN(TotalPowerExportKwh), 0) )
+                  AS AvgActivePowerW
+
+            FROM DeviceEnergy
+
+            WHERE DeviceId = @DeviceId
+              AND Timestamp >= @From
+              AND Timestamp < @To
+
+            GROUP BY
+                DeviceId,
+                (Timestamp - @From) / @TimeUnit
+
+            ORDER BY IntervalStartUnix;
+            """;
+
+        using var connection = await sqlLiteService.CreateOpenConnection();
+
+        var command = new CommandDefinition(
+            sql,
+            new
+            {
+                DeviceId = deviceId,
+                From = ((DateTimeOffset)from.ToUniversalTime()).ToUnixTimeSeconds(),
+                To = ((DateTimeOffset)to.ToUniversalTime()).ToUnixTimeSeconds(),
+                TimeUnit = timeUnit
+            },
+            cancellationToken: cancellationToken);
+
+        return await connection.QueryAsync<DeviceSKTEnergyAggregate>(command);
+    }
+
+    public async Task<IEnumerable<DeviceP1EnergyAggregate>> GetDeviceP1EnergyAggregates(int deviceId, DateTime from, DateTime to, int timeUnit = 300, CancellationToken cancellationToken = default)
     {
         using var connection = await sqlLiteService.CreateOpenConnection();
 
@@ -135,29 +171,10 @@ public class DeviceRepository
             SELECT
                 DeviceId,
 
-                (Timestamp / 300) * 300 AS IntervalStartUnix,
-                (Timestamp / 300) * 300 + 300 AS IntervalEndUnix,
+                @From + (((Timestamp - @From) / @TimeUnit) * @TimeUnit) AS IntervalStartUnix,
+                @From + (((Timestamp - @From) / @TimeUnit + 1) * @TimeUnit) AS IntervalEndUnix,
 
-                AVG(ActivePowerW) AS AvgActivePowerW,
-                MIN(ActivePowerW) AS MinActivePowerW,
-                MAX(ActivePowerW) AS MaxActivePowerW,
-
-                AVG(ActivePowerL1W) AS AvgActivePowerL1W,
-                AVG(ActivePowerL2W) AS AvgActivePowerL2W,
-                AVG(ActivePowerL3W) AS AvgActivePowerL3W,
-
-                AVG(ActiveVoltageL1V) AS AvgActiveVoltageL1V,
-                AVG(ActiveVoltageL2V) AS AvgActiveVoltageL2V,
-                AVG(ActiveVoltageL3V) AS AvgActiveVoltageL3V,
-
-                AVG(ActiveCurrentA) AS AvgActiveCurrentA,
-                AVG(ActiveCurrentL1A) AS AvgActiveCurrentL1A,
-                AVG(ActiveCurrentL2A) AS AvgActiveCurrentL2A,
-                AVG(ActiveCurrentL3A) AS AvgActiveCurrentL3A,
-
-                AVG(ActiveFrequencyHz) AS AvgActiveFrequencyHz,
-
-                COUNT(ActivePowerW) AS SampleCount
+                AVG(ActivePowerW) AS AvgActivePowerW
 
             FROM DeviceP1Measurement
 
@@ -167,7 +184,7 @@ public class DeviceRepository
 
             GROUP BY
                 DeviceId,
-                (Timestamp / 300)
+                (Timestamp - @From) / @TimeUnit
 
             ORDER BY
                 IntervalStartUnix;
@@ -179,72 +196,47 @@ public class DeviceRepository
             {
                 DeviceId = deviceId,
                 From = ((DateTimeOffset)from.ToUniversalTime()).ToUnixTimeSeconds(),
-                To = ((DateTimeOffset)to.ToUniversalTime()).ToUnixTimeSeconds()
+                To = ((DateTimeOffset)to.ToUniversalTime()).ToUnixTimeSeconds(),
+                TimeUnit = timeUnit
             },
             cancellationToken: cancellationToken);
 
         return await connection.QueryAsync<DeviceP1EnergyAggregate>(command);
     }
 
-    public async Task<IEnumerable<DeviceP1GasAggregate>> GetDeviceP1GasAggregates(int deviceId, DateTime from, DateTime to, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<DeviceP1EnergyAggregateImportExport>> GetDeviceP1EnergyAggregatesImportExport(int deviceId, DateTime from, DateTime to, int timeUnit = 300, CancellationToken cancellationToken = default)
     {
         using var connection = await sqlLiteService.CreateOpenConnection();
 
         const string sql = """
-            WITH RankedMeasurements AS (
-                SELECT
-                    DeviceId,
-                    Timestamp,
-                    GasValue,
-                    (Timestamp / 300) * 300 AS IntervalStartUnix,
-
-                    ROW_NUMBER() OVER (
-                        PARTITION BY DeviceId, (Timestamp / 300)
-                        ORDER BY Timestamp DESC
-                    ) AS rn
-
-                FROM DeviceP1Measurement
-                WHERE DeviceId = @DeviceId
-            ),
-            IntervalReadings AS (
-                SELECT
-                    DeviceId,
-                    Timestamp,
-                    GasValue,
-                    IntervalStartUnix,
-                    IntervalStartUnix + 300 AS IntervalEndUnix
-                FROM RankedMeasurements
-                WHERE rn = 1
-            ),
-            ReadingsWithPrevious AS (
-                SELECT
-                    *,
-                    LAG(GasValue) OVER (
-                        PARTITION BY DeviceId
-                        ORDER BY IntervalStartUnix
-                    ) AS PreviousGasValue
-                FROM IntervalReadings
-            )
             SELECT
                 DeviceId,
-                IntervalStartUnix,
-                IntervalEndUnix,
 
-                GasValue AS LastGasValue,
-                PreviousGasValue,
+                @From + (((Timestamp - @From) / @TimeUnit) * @TimeUnit) AS IntervalStartUnix,
+                @From + (((Timestamp - @From) / @TimeUnit + 1) * @TimeUnit) AS IntervalEndUnix,
 
-                CASE
-                    WHEN PreviousGasValue IS NOT NULL
-                         AND GasValue >= PreviousGasValue
-                    THEN GasValue - PreviousGasValue
-                    ELSE NULL
-                END AS GasConsumptionM3
+            COALESCE(
+                MAX(TotalPowerImportKwh) - MIN(TotalPowerImportKwh),
+                0
+            ) AS ImportKwh,
+            
+            COALESCE(
+                MAX(TotalPowerExportKwh) - MIN(TotalPowerExportKwh),
+                0
+            ) AS ExportKwh
 
-            FROM ReadingsWithPrevious
-            WHERE IntervalStartUnix >= @From
-              AND IntervalStartUnix < @To
+            FROM DeviceP1Measurement
 
-            ORDER BY IntervalStartUnix;
+            WHERE DeviceId = @DeviceId
+                AND Timestamp >= @From
+                AND Timestamp < @To
+
+            GROUP BY
+                DeviceId,
+                (Timestamp - @From) / @TimeUnit
+
+            ORDER BY
+                IntervalStartUnix;
             """;
 
         var command = new CommandDefinition(
@@ -253,80 +245,74 @@ public class DeviceRepository
             {
                 DeviceId = deviceId,
                 From = ((DateTimeOffset)from.ToUniversalTime()).ToUnixTimeSeconds(),
-                To = ((DateTimeOffset)to.ToUniversalTime()).ToUnixTimeSeconds()
+                To = ((DateTimeOffset)to.ToUniversalTime()).ToUnixTimeSeconds(),
+                TimeUnit = timeUnit
+            },
+            cancellationToken: cancellationToken);
+
+        return await connection.QueryAsync<DeviceP1EnergyAggregateImportExport>(command);
+    }
+
+    public async Task<IEnumerable<DeviceP1GasAggregate>> GetDeviceP1GasAggregates(int deviceId, DateTime from, DateTime to, int timeUnit = 300, CancellationToken cancellationToken = default)
+    {
+        using var connection = await sqlLiteService.CreateOpenConnection();
+
+        const string sql = """
+                SELECT
+                    @DeviceId AS DeviceId,
+            
+                    @From + (((Timestamp - @From) / @TimeUnit) * @TimeUnit) AS IntervalStartUnix,
+                    @From + (((Timestamp - @From) / @TimeUnit + 1) * @TimeUnit) AS IntervalEndUnix,
+            
+                    MAX(GasValue) - MIN(GasValue) AS GasConsumptionM3
+            
+                FROM DeviceP1Measurement
+                WHERE DeviceId = @DeviceId
+                  AND Timestamp >= @From
+                  AND Timestamp < @To
+                  AND GasValue IS NOT NULL
+            
+                GROUP BY (Timestamp - @From) / @TimeUnit
+                ORDER BY IntervalStartUnix;
+            """;
+
+        var command = new CommandDefinition(
+            sql,
+            new
+            {
+                DeviceId = deviceId,
+                From = ((DateTimeOffset)from.ToUniversalTime()).ToUnixTimeSeconds(),
+                To = ((DateTimeOffset)to.ToUniversalTime()).ToUnixTimeSeconds(),
+                TimeUnit = timeUnit
             },
             cancellationToken: cancellationToken);
 
         return await connection.QueryAsync<DeviceP1GasAggregate>(command);
     }
 
-    public async Task<IEnumerable<DeviceWaterAggregate>> GetDeviceWaterAggregates(int deviceId, DateTime from, DateTime to, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<DeviceWaterAggregate>> GetDeviceWaterAggregates(int deviceId, DateTime from, DateTime to, int timeUnit = 300, CancellationToken cancellationToken = default)
     {
         using var connection = await sqlLiteService.CreateOpenConnection();
 
         const string sql = """
-            WITH RankedMeasurements AS (
-                SELECT
-                    DeviceId,
-                    Timestamp,
-                    TotalLiterM3,
-                    ActiveLiterLpm,
-                    TotalLiterOffsetM3,
-                    (Timestamp / 300) * 300 AS IntervalStartUnix,
+        SELECT
+            @DeviceId AS DeviceId,
 
-                    ROW_NUMBER() OVER (
-                        PARTITION BY DeviceId, (Timestamp / 300)
-                        ORDER BY Timestamp DESC
-                    ) AS rn
+            @From + (((Timestamp - @From) / @TimeUnit) * @TimeUnit) AS IntervalStartUnix,
+            @From + (((Timestamp - @From) / @TimeUnit + 1) * @TimeUnit) AS IntervalEndUnix,
 
-                FROM DeviceWaterMeasurement
-                WHERE DeviceId = @DeviceId
-            ),
-            IntervalReadings AS (
-                SELECT
-                    DeviceId,
-                    Timestamp,
-                    TotalLiterM3,
-                    ActiveLiterLpm,
-                    TotalLiterOffsetM3,
-                    IntervalStartUnix,
-                    IntervalStartUnix + 300 AS IntervalEndUnix
-                FROM RankedMeasurements
-                WHERE rn = 1
-            ),
-            ReadingsWithPrevious AS (
-                SELECT
-                    *,
-                    LAG(TotalLiterM3) OVER (
-                        PARTITION BY DeviceId
-                        ORDER BY IntervalStartUnix
-                    ) AS PreviousTotalLiterM3
-                FROM IntervalReadings
-            )
-            SELECT
-                DeviceId,
-                IntervalStartUnix,
-                IntervalEndUnix,
+            MAX(TotalLiterM3) - MIN(TotalLiterM3) AS WaterConsumptionM3
 
-                TotalLiterM3 AS LastTotalLiterM3,
-                PreviousTotalLiterM3,
+        FROM DeviceWaterMeasurement
+        WHERE DeviceId = @DeviceId
+          AND Timestamp >= @From
+          AND Timestamp < @To
+          AND TotalLiterM3 IS NOT NULL
 
-                ActiveLiterLpm,
+        GROUP BY
+            (Timestamp - @From) / @TimeUnit
 
-                TotalLiterOffsetM3,
-
-                CASE
-                    WHEN PreviousTotalLiterM3 IS NOT NULL
-                         AND TotalLiterM3 >= PreviousTotalLiterM3
-                    THEN TotalLiterM3 - PreviousTotalLiterM3
-                    ELSE NULL
-                END AS WaterConsumptionM3
-
-            FROM ReadingsWithPrevious
-            WHERE IntervalStartUnix >= @From
-              AND IntervalStartUnix < @To
-
-            ORDER BY IntervalStartUnix;
+        ORDER BY IntervalStartUnix;
         """;
 
         var command = new CommandDefinition(
@@ -335,7 +321,8 @@ public class DeviceRepository
             {
                 DeviceId = deviceId,
                 From = ((DateTimeOffset)from.ToUniversalTime()).ToUnixTimeSeconds(),
-                To = ((DateTimeOffset)to.ToUniversalTime()).ToUnixTimeSeconds()
+                To = ((DateTimeOffset)to.ToUniversalTime()).ToUnixTimeSeconds(),
+                TimeUnit = timeUnit
             },
             cancellationToken: cancellationToken);
 
@@ -773,25 +760,21 @@ public class DeviceP1EnergyAggregate
     public long IntervalEndUnix { get; set; }
 
     public double? AvgActivePowerW { get; set; }
-    public double? MinActivePowerW { get; set; }
-    public double? MaxActivePowerW { get; set; }
 
-    public double? AvgActivePowerL1W { get; set; }
-    public double? AvgActivePowerL2W { get; set; }
-    public double? AvgActivePowerL3W { get; set; }
+    public DateTime IntervalStart => DateTimeOffset.FromUnixTimeSeconds(IntervalStartUnix).UtcDateTime;
 
-    public double? AvgActiveVoltageL1V { get; set; }
-    public double? AvgActiveVoltageL2V { get; set; }
-    public double? AvgActiveVoltageL3V { get; set; }
+    public DateTime IntervalEnd => DateTimeOffset.FromUnixTimeSeconds(IntervalEndUnix).UtcDateTime;
+}
 
-    public double? AvgActiveCurrentA { get; set; }
-    public double? AvgActiveCurrentL1A { get; set; }
-    public double? AvgActiveCurrentL2A { get; set; }
-    public double? AvgActiveCurrentL3A { get; set; }
+public class DeviceP1EnergyAggregateImportExport
+{
+    public long DeviceId { get; set; }
 
-    public double? AvgActiveFrequencyHz { get; set; }
+    public long IntervalStartUnix { get; set; }
+    public long IntervalEndUnix { get; set; }
 
-    public int SampleCount { get; set; }
+    public double? ImportKwh { get; set; }
+    public double? ExportKwh { get; set; }
 
     public DateTime IntervalStart => DateTimeOffset.FromUnixTimeSeconds(IntervalStartUnix).UtcDateTime;
 

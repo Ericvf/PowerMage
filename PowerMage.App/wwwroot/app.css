@@ -48,8 +48,36 @@ h1:focus {
     display: none;
 }
 
-/* Chart */
+/* Navigator */
+.navigator {
+    max-width: 50%;
+    margin-inline: auto;
+    text-align: center;
+    position: sticky;
+    bottom: 1rem;
+    z-index: 10;
+    background: black;
+    border: 2px solid gray;
+    border-radius: 10px;
+    padding: 1em;
+    transform: scale(0.75);
+}
 
+    .navigator .title button {
+        margin: 0;
+        border: 0;
+    }
+
+    .navigator .buttons {
+        margin: 0;
+        box-shadow: none;
+    }
+
+        .navigator .title h6{
+            width: 100%;
+        }
+
+/* Chart */
 .chartblock h4, .chartblock h6 {
     margin: 0;
 }
@@ -106,14 +134,12 @@ h1:focus {
 .hour-grid {
     stroke: var(--pico-muted-border-color);
     stroke-width: 1;
-    opacity: 1;
     vector-effect: non-scaling-stroke;
 }
 
 .horizontal-grid {
     stroke: var(--pico-muted-border-color);
     stroke-width: 1;
-    opacity: 1;
     vector-effect: non-scaling-stroke;
 }
 
@@ -139,7 +165,6 @@ h1:focus {
     }
 }
 
-
 .power-line {
     stroke: var(--power-import);
 }
@@ -155,6 +180,12 @@ h1:focus {
 
 .power-import-fill {
     fill: url(#power-import-fill);
+    stroke: none;
+}
+
+
+.powerexport-fill {
+    fill: url(#powerexport-fill);
     stroke: none;
 }
 
@@ -200,17 +231,26 @@ h1:focus {
     stroke-dasharray: 5 3;
 }
 
-.chartblock .gas-color {
+.chartblock .gas-color, .gas-color {
     color: var(--gas-color);
 }
 
 
-.chartblock .water-color {
+.chartblock .water-color, .water-color {
     color: var(--water-color);
 }
 
+.chartblock .power-color, .power-color {
+    color: var(--power-import);
+}
 
 
+.chartblock .powerexport-color, .powerexport-color {
+    color: var(--power-export);
+}
+
+
+/* Labels */
 .y-labels {
     position: relative;
     grid-column: 1;
@@ -230,28 +270,18 @@ h1:focus {
 
 
 .x-labels {
-    position: absolute;
+    position: relative;
     inset: 0;
     pointer-events: none;
     color: var(--pico-muted-color);
     font-size: 12px;
+    top: calc(310 / 360 * 100%);
 }
-
     .x-labels span {
         position: absolute;
-        bottom: 12px;
+        transform: translateX(-50%);
         white-space: nowrap;
     }
-
-
-/* Check for portrait mode */
-@media (orientation: portrait) {
-    .x-labels span {
-        position: absolute;
-        bottom: 0px;
-        white-space: nowrap;
-    }
-}
 
 /* General */
 body > header {
@@ -279,7 +309,6 @@ body > footer {
 }
 
 /* Forms*/
-
 .form-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -299,4 +328,34 @@ th.small, td.small {
     width: 0px;
     margin: 0;
     padding: 0;
+}
+
+
+/* Tooltip */
+.chart-tooltip {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 9999;
+    pointer-events: none; /* never steals the hover from the bar */
+    opacity: 0;
+    transition: opacity 80ms ease-out;
+    will-change: transform;
+    background: #1f2937;
+    color: #fff;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font: 500 13px/1.3 system-ui, sans-serif;
+    white-space: pre-line; /* honors \n line breaks */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, .25);
+}
+
+.chart-tooltip-title{
+    font-size:1.1em;
+}
+.chart-tooltip-value {
+    font-size: 1.4em;
+}
+.chart-tooltip.visible {
+    opacity: 1;
 }

@@ -15,19 +15,15 @@
 
                 @for (var minute = 60; minute <= MinutesPerDay; minute += 60)
                 {
-                    var x = Math.Round(X(minute));
+                    var x = Math.Round(X(minute, MinutesPerDay));
                     <line x1="@x" y1="@ChartTop" x2="@x" y2="@ChartBottom" class="hour-grid" />
                 }
 
                 @if (MinValue < 0 && MaxValue >= 0)
                 {
                     var y = Math.Round(Y(0));
-                    _ = y;
-                    <line x1="@ChartLeft"
-                          y1="@y"
-                          x2="@ChartRight"
-                          y2="@y"
-                          class="zero-line" />
+                    <line x1="@ChartLeft" y1="@y"
+                          x2="@ChartRight" y2="@y" class="zero-line" />
                 }
             </g>
 
@@ -59,6 +55,19 @@
                               stop-color="var(--power-export)"
                               stop-opacity="0.25" />
                     </linearGradient>
+                    <linearGradient id="powerexport-fill"
+                                    x1="0"
+                                    y1="1"
+                                    x2="0"
+                                    y2="0">
+                        <stop offset="0%"
+                              stop-color="var(--power-export)"
+                              stop-opacity="0.25" />
+
+                        <stop offset="100%"
+                              stop-color="var(--power-export)"
+                              stop-opacity="0.75" />
+                    </linearGradient>
                     <linearGradient id="gas-fill"
                                     x1="0"
                                     y1="0"
@@ -86,40 +95,63 @@
                               stop-opacity="0.25" />
                     </linearGradient>
                 </defs>
-
-                @foreach (var segment in GetSegments())
-                {
-                    if (segment.Count >= 2)
+                    @if (chartSeries != null)
                     {
-                        var isNegative = segment.Any(x => x.Watts < 0);
 
-                        if (isNegative)
+                        for (int i = 0; i < chartSeries.Length; i++)
                         {
-                            <path d="@BuildFilledPath(segment)" class="@($"{CssColorClass}-import-fill")" />
-                            <path d="@BuildSmoothPath(segment)" class="@($"chart-line {CssColorClass}-import-line")" />
-                        }
-                        else
-                        {
-                            <path d="@BuildFilledPath(segment)" class="@($"{CssColorClass}-fill")" />
-                            <path d="@BuildSmoothPath(segment)" class="@($"chart-line {CssColorClass}-line")" />
+                            var chartPoints = chartSeries[i].points;
+                            var chartType = chartSeries[i].chartType;
+                            var colorClass = chartSeries[i].colorClass;
+
+                            if (chartType == ChartTypes.Line)
+                            {
+                                foreach (var segment in GetSegments(chartPoints))
+                                {
+                                    if (segment.Length >= 2)
+                                    {
+                                        var isNegative = segment.Any(x => x.Watts < 0);
+                                        if (isNegative)
+                                        {
+                                            <path d="@BuildFilledPath(segment)" class="@($"{colorClass}-import-fill")" />
+                                            <path d="@BuildSmoothPath(segment)" class="@($"chart-line {colorClass}-import-line")" />
+                                        }
+                                        else
+                                        {
+                                            <path d="@BuildFilledPath(segment)" class="@($"{colorClass}-fill")" />
+                                            <path d="@BuildSmoothPath(segment)" class="@($"chart-line {colorClass}-line")" />
+                                        }
+                                    }
+                                }
+                            }
+                            else if (chartType == ChartTypes.Bar)
+                            {
+                                var barWidth = GetBarWidth() / chartSeries.Length;
+                                foreach (var point in chartPoints)
+                                {
+                                    if (point.Watts == 0)
+                                        continue;
+
+                                    <path d="@BuildBarPath(point, i, chartSeries.Length)"
+                                        class="@($"{colorClass}-fill")"
+                                        data-tooltip="@($"{F(point.Watts)} W")" data-tooltip-title="@($"{point.title}")" data-tooltip-color="@colorClass" />
+                                }
+                            }
                         }
                     }
-                }
 
+               
             </g>
 
             <line class="axis" x1="@ChartLeft" y1="@ChartBottom" x2="@ChartRight" y2="@ChartBottom" />
             <line class="axis" x1="@ChartLeft" y1="@ChartTop" x2="@ChartLeft" y2="@ChartBottom" />
 
         </svg>
-
         <div class="x-labels">
-            @for (var minute = 120; minute < MinutesPerDay; minute += 240)
+            @foreach (var point in GetLabelPoints())
             {
-                var percentage = ChartXPercentage(minute);
-
-                <span style="@($"left: {percentage.ToString("0.###", CultureInfo.InvariantCulture)}%")">
-                    @TimeLabel(minute)
+                <span style="@($"left: {BarCenterPercentage(point.Minute).ToString("0.###", CultureInfo.InvariantCulture)}%")">
+                    @UnixTimeStampToDateTime(point.title).ToString(XLabelFormat)
                 </span>
             }
         </div>
@@ -144,32 +176,50 @@
     public DateTime Day { get; set; }
 
     [Parameter]
-    public Func<List<ChartPoint>>? GetChartPoints { get; set; }
+    public string XLabelFormat { get; set; } = "HH:mm";
 
     [Parameter]
-    public Func<double>? GetMaxValues { get; set; }
+    public Func<ChartSeries[]>? GetChartPoints { get; set; }
 
-    [Parameter]
-    public Func<double>? GetMinValues { get; set; }
+    private double MaxValue;
+    private double MinValue;
+    private ChartSeries[]? chartSeries;
 
-    [Parameter]
-    public string CssColorClass { get; set; } = "power";
+    protected override async Task OnParametersSetAsync()
+    {
+        chartSeries = GetChartPoints?.Invoke() ?? Array.Empty<ChartSeries>();
 
-    private double MaxValue => Math.Max(0, GetMaxValues?.Invoke() ?? 0d);
+        MaxValue = chartSeries?
+            .Where(s => s.points != null)
+            .SelectMany(s => s.points)
+            .Select(p => p.Watts)
+            .DefaultIfEmpty(0)
+            .Max() ?? 0;
+        MaxValue *= 1.1;
 
-    private double MinValue => Math.Min(0, GetMinValues?.Invoke() ?? 0d);
+        MinValue = Math.Min(0, chartSeries?
+         .Where(s => s.points != null)
+         .SelectMany(s => s.points)
+         .Select(p => p.Watts)
+         .DefaultIfEmpty(0)
+         .Min() ?? 0);
+    }
 
     private double YAxisStep => (MaxValue - MinValue) / 10;
 
     private const int MinutesPerDay = 1440;
+
+    [Parameter]
+    public int MomentsPerView { get; set; } = 1440 / 5;
+
     private const double ChartLeft = 0;
     private const double ChartRight = 1425;
     private const double ChartTop = 15;
     private const double ChartBottom = 310;
 
-    private double X(double minute)
+    private double X(double minute, double total)
     {
-        return ChartLeft + (minute / MinutesPerDay) * (ChartRight - ChartLeft);
+        return ChartLeft + (minute / total) * (ChartRight - ChartLeft);
     }
 
     private double Y(double watts)
@@ -181,9 +231,9 @@
                (ChartBottom - ChartTop);
     }
 
-    private double ChartXPercentage(double minute)
+    private double ChartXPercentage(double minute, double total)
     {
-        return X(minute) / 1440.0 * 100.0;
+        return X(minute, total) / 1440.0 * 100.0;
     }
 
     private double ChartYPercentage(double watts)
@@ -198,26 +248,21 @@
         return $"{(int)time.TotalHours:00}:{time.Minutes:00}";
     }
 
-    private List<List<ChartPoint>> GetSegments()
+    private List<ChartPoint[]> GetSegments(ChartPoint[] chartPoints)
     {
-        if (GetChartPoints == null)
-            return new List<List<ChartPoint>>();
-
-        var points = GetChartPoints();
-
-        if (!points.Any())
+        if (!chartPoints.Any())
         {
-            return new List<List<ChartPoint>>();
+            return new List<ChartPoint[]>();
         }
 
-        var segments = new List<List<ChartPoint>>();
+        var segments = new List<ChartPoint[]>();
 
-        if (points.Count == 0)
+        if (chartPoints.Length == 0)
             return segments;
 
         var current = new List<ChartPoint>();
 
-        foreach (var point in points)
+        foreach (var point in chartPoints)
         {
             if (current.Count == 0)
             {
@@ -230,7 +275,7 @@
             var gap = point.Minute - previous.Minute > 5.01;
             if (gap)
             {
-                segments.Add(current);
+                segments.Add(current.ToArray());
                 current = new List<ChartPoint> { point };
                 continue;
             }
@@ -242,10 +287,10 @@
             {
                 var fraction = -previous.Watts / (point.Watts - previous.Watts);
                 var zeroMinute = previous.Minute + fraction * (point.Minute - previous.Minute);
-                var zeroPoint = new ChartPoint(zeroMinute, 0);
+                var zeroPoint = new ChartPoint(zeroMinute, 0, 0);
 
                 current.Add(zeroPoint);
-                segments.Add(current);
+                segments.Add(current.ToArray());
 
                 current = new List<ChartPoint>
                 {
@@ -260,20 +305,20 @@
         }
 
         if (current.Count > 0)
-            segments.Add(current);
+            segments.Add(current.ToArray());
 
         return segments;
     }
 
-    private string BuildFilledPath(List<ChartPoint> points)
+    private string BuildFilledPath(ChartPoint[] points)
     {
-        if (points.Count < 2)
+        if (points.Length < 2)
             return string.Empty;
 
         var line = BuildSmoothPath(points);
 
-        var firstX = X(points[0].Minute);
-        var lastX = X(points[^1].Minute);
+        var firstX = X(points[0].Minute, MomentsPerView - 1);
+        var lastX = X(points[^1].Minute, MomentsPerView - 1);
 
         // Zero line's Y-coordinate in the chart
         var zeroY = Y(0);
@@ -283,9 +328,9 @@
                $"L {F(firstX)} {F(zeroY)} Z";
     }
 
-    private string BuildSmoothPath(List<ChartPoint> points)
+    private string BuildSmoothPath(ChartPoint[] points)
     {
-        if (points.Count < 2)
+        if (points.Length < 2)
             return string.Empty;
 
 
@@ -296,10 +341,10 @@
 
 
         path.Append(
-            $"M {F(X(first.Minute))} {F(Y(first.Watts))}");
+            $"M {F(X(first.Minute, MomentsPerView - 1))} {F(Y(first.Watts))}");
 
 
-        for (var i = 0; i < points.Count - 1; i++)
+        for (var i = 0; i < points.Length - 1; i++)
         {
             var p0 = i > 0
                 ? points[i - 1]
@@ -309,16 +354,15 @@
 
             var p2 = points[i + 1];
 
-            var p3 = i + 2 < points.Count
+            var p3 = i + 2 < points.Length
                 ? points[i + 2]
                 : p2;
 
-
             /*
-             * Catmull-Rom -> cubic Bézier.
+            * Catmull-Rom -> cubic Bézier.
              *
-             * This gives us a smooth curve while keeping
-             * the curve passing through the actual data points.
+            * This gives us a smooth curve while keeping
+            * the curve passing through the actual data points.
              */
             var cp1X =
                 p1.Minute +
@@ -340,13 +384,45 @@
 
             path.Append(
                 $" C " +
-                $"{F(X(cp1X))} {F(Y(cp1Y))}, " +
-                $"{F(X(cp2X))} {F(Y(cp2Y))}, " +
-                $"{F(X(p2.Minute))} {F(Y(p2.Watts))}");
+                $"{F(X(cp1X, MomentsPerView - 1))} {F(Y(cp1Y))}, " +
+                $"{F(X(cp2X, MomentsPerView - 1))} {F(Y(cp2Y))}, " +
+                $"{F(X(p2.Minute, MomentsPerView - 1))} {F(Y(p2.Watts))}");
         }
 
 
         return path.ToString();
+    }
+
+    private string BuildBarPath(ChartPoint point, int seriesIndex, int seriesCount, double groupFill = 0.8)
+    {
+        if (MomentsPerView <= 0 || MaxValue <= MinValue)
+            return string.Empty;
+
+        var slotWidth = (ChartRight - ChartLeft) / MomentsPerView;
+        var groupWidth = slotWidth * groupFill;  
+        var barWidth = groupWidth / seriesCount;
+
+        var slotCenter = ChartLeft + (point.Minute + 0.5) * slotWidth;
+        var left = slotCenter - groupWidth / 2 + seriesIndex * barWidth;
+        var right = left + barWidth;
+
+        var zeroY = ChartBottom - (0 - MinValue) / (MaxValue - MinValue) * (ChartBottom - ChartTop);
+        var valueY = ChartBottom - (point.Watts - MinValue) / (MaxValue - MinValue) * (ChartBottom - ChartTop);
+
+        var top = Math.Min(zeroY, valueY);
+        var bottom = Math.Max(zeroY, valueY);
+
+        return string.Join(" ",
+            $"M {F(left)} {F(top)}",
+            $"H {F(right)}",
+            $"V {F(bottom)}",
+            $"H {F(left)}",
+            "Z");
+    }
+
+    private double GetBarWidth()
+    {
+        return Math.Max(5, ((ChartRight - ChartLeft) / MomentsPerView));
     }
 
     private static string F(double value)
@@ -382,5 +458,34 @@
             return value.ToString("0.0000", CultureInfo.InvariantCulture);
 
         return value.ToString("0.#####", CultureInfo.InvariantCulture);
+    }
+
+    private double BarCenterPercentage(double slotIndex)
+    {
+        var slotWidth = (ChartRight - ChartLeft) / MomentsPerView;
+        var slotCenter = ChartLeft + (slotIndex + 0.5) * slotWidth;
+        return slotCenter / 1440.0 * 100.0;
+    }
+
+    private IEnumerable<ChartPoint> GetLabelPoints()
+    {
+        if (chartSeries == null)
+            return Enumerable.Empty<ChartPoint>();
+
+        var maxLabels = Math.Min(MomentsPerView, 12);
+        var step = Math.Max(1, (int)Math.Ceiling(MomentsPerView / (double)maxLabels));
+
+        return chartSeries[0].points
+            .Where(p => (int)p.Minute % step == 0)
+            .GroupBy(p => (int)p.Minute)
+            .Select(g => g.First())
+            .OrderBy(p => p.Minute);
+    }
+
+    private static DateTime UnixTimeStampToDateTime(double unixTimeStamp)
+    {
+        DateTime dateTime = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
+        dateTime = dateTime.AddSeconds(unixTimeStamp).ToLocalTime();
+        return dateTime;
     }
 }
