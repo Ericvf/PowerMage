@@ -1,8 +1,12 @@
 <Solution>
   <Folder Name="/Solution Items/">
     <File Path=".gitignore" />
+    <File Path="dashboard.png" />
     <File Path="docker-compose.yml" />
     <File Path="LICENSE" />
+    <File Path="monthgraph.png" />
+    <File Path="settings.png" />
+    <File Path="weekgraph.png" />
   </Folder>
   <Project Path="PowerMage.App/PowerMage.App.csproj" />
   <Project Path="PowerMage.Collector/PowerMage.Collector.csproj" />
