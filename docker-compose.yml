@@ -15,7 +15,7 @@ services:
       dmz.url: http://powermage.docker.local/
 
     volumes:
-      - ./data:/app/data
+      - powermage-data:/app/data
 
   powermage-collector:
     build:
@@ -30,9 +30,12 @@ services:
       - virtual-network
 
     volumes:
-      - ./data:/app/data
+      - powermage-data:/app/data
 
 networks:
   virtual-network:
     external: true
     name: virtual-network
+
+volumes:
+  powermage-data:
