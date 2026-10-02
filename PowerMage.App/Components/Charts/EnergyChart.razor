@@ -123,10 +123,18 @@
                                         }
                                     }
                                 }
+
+                                foreach (var point in chartPoints)
+                                {
+                                    var newValue = point.Watts < 0 ? MinValue : MaxValue;
+                                    var tooltipColor = point.Watts < 0 ? $"powerexport" : colorClass;
+
+                                    <path d="@InvisibleBarPath(new ChartPoint(point.Minute, newValue, point.title), i, chartSeries.Length, 1)" style="color:transparent"
+                                          data-tooltip="@($"{F(point.Watts)} W")" data-tooltip-title="@($"{point.title}")" data-tooltip-color="@tooltipColor" />
+                                }
                             }
                             else if (chartType == ChartTypes.Bar)
                             {
-                                var barWidth = GetBarWidth() / chartSeries.Length;
                                 foreach (var point in chartPoints)
                                 {
                                     if (point.Watts == 0)
@@ -393,13 +401,33 @@
         return path.ToString();
     }
 
+    private string InvisibleBarPath(ChartPoint point, int seriesIndex, int seriesCount, double groupFill = 0.8)
+    {
+        if (MomentsPerView <= 0 || MaxValue <= MinValue)
+            return string.Empty;
+
+        var slotWidth = (ChartRight - ChartLeft) / MomentsPerView;
+        var barWidth = slotWidth / seriesCount;
+        var left = ChartLeft + point.Minute * barWidth;
+        var right = left + barWidth;
+        var top = ChartTop;
+        var bottom = ChartBottom;
+
+        return string.Join(" ",
+            $"M {F(left)} {F(top)}",
+            $"H {F(right)}",
+            $"V {F(bottom)}",
+            $"H {F(left)}",
+            "Z");
+    }
+
     private string BuildBarPath(ChartPoint point, int seriesIndex, int seriesCount, double groupFill = 0.8)
     {
         if (MomentsPerView <= 0 || MaxValue <= MinValue)
             return string.Empty;
 
         var slotWidth = (ChartRight - ChartLeft) / MomentsPerView;
-        var groupWidth = slotWidth * groupFill;  
+        var groupWidth = slotWidth * groupFill;
         var barWidth = groupWidth / seriesCount;
 
         var slotCenter = ChartLeft + (point.Minute + 0.5) * slotWidth;
