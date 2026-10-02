@@ -108,7 +108,7 @@
                                     .OrderBy(x => x.Minute)
                                     .ToArray();
 
-            var importSeries = new ChartSeries(ChartTypes.Bar, importChartData, "power", "W");
+            var importSeries = new ChartSeries(ChartTypes.Bar, importChartData, "power", "Kwh");
 
             var exportChartData = chartData2
                         .Where(x =>
@@ -118,7 +118,7 @@
                         .Select(x => new ChartPoint((x.IntervalStartUnix - startUnix) / timeUnit, x.ExportKwh!.Value, x.IntervalStartUnix))
                         .OrderBy(x => x.Minute)
                         .ToArray();
-            var exportSeries = new ChartSeries(ChartTypes.Bar, exportChartData, "powerexport", "W");
+            var exportSeries = new ChartSeries(ChartTypes.Bar, exportChartData, "powerexport", "Kwh");
 
             return [importSeries, exportSeries];
         }
