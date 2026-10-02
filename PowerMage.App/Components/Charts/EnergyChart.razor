@@ -130,7 +130,7 @@
                                     var tooltipColor = point.Watts < 0 ? $"powerexport" : colorClass;
 
                                     <path d="@InvisibleBarPath(new ChartPoint(point.Minute, newValue, point.title), i, chartSeries.Length, 1)" style="color:transparent"
-                                          data-tooltip="@($"{F(point.Watts)} W")" data-tooltip-title="@($"{point.title}")" data-tooltip-color="@tooltipColor" />
+                                      data-tooltip="@($"{F(point.Watts)} {chartSeries[i].suffix}")" data-tooltip-title="@($"{point.title}")" data-tooltip-color="@tooltipColor" />
                                 }
                             }
                             else if (chartType == ChartTypes.Bar)
@@ -142,7 +142,7 @@
 
                                     <path d="@BuildBarPath(point, i, chartSeries.Length)"
                                         class="@($"{colorClass}-fill")"
-                                        data-tooltip="@($"{F(point.Watts)} W")" data-tooltip-title="@($"{point.title}")" data-tooltip-color="@colorClass" />
+                                        data-tooltip="@($"{F(point.Watts)} {chartSeries[i].suffix}")" data-tooltip-title="@($"{point.title}")" data-tooltip-color="@colorClass" />
                                 }
                             }
                         }

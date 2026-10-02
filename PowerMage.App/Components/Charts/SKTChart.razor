@@ -73,7 +73,7 @@
             .OrderBy(x => x.Minute)
             .ToArray();
         var chartType = View == Views.Day ? ChartTypes.Line : ChartTypes.Bar;
-        var series = new ChartSeries(chartType, chartPoints, "power");
+        var series = new ChartSeries(chartType, chartPoints, "power", "W");
         return [series];
     }
 }

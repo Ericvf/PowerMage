@@ -72,7 +72,7 @@
             .ToArray();
 
         var chartType = View == Views.Day ? ChartTypes.Line : ChartTypes.Bar;
-        var series = new ChartSeries(chartType, chartPoints, "gas");
+        var series = new ChartSeries(chartType, chartPoints, "gas", "m3");
         return [series];
     }
 }
