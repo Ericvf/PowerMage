@@ -1,0 +1,74 @@
+﻿@page "/live"
+@using PowerMage.Components.Charts
+@inject DeviceRepository deviceRepository
+@inject NavigationManager Navigation
+
+<PageTitle>Live</PageTitle>
+
+@if (IsLoading)
+{
+    <main class="container">
+        <article>
+            <p>Loading Power Mage ⚡</p>
+            <article aria-busy="true"></article>
+        </article>
+    </main>
+}
+else if (p1DeviceModel == null && waterDeviceModel == null)
+{
+    <main class="container">
+        <article>
+            <h2>Welcome to Power Mage ⚡</h2>
+            <p>It appears you have not added any devices yet. Use the button above to add devices to Power Mage.</p>
+        </article>
+    </main>
+}
+else
+{
+    <div class="layout">
+        <div class="full-width">
+            <P1Chart Day="Today" Device="p1DeviceModel" View="View" />
+        </div>
+
+        <div class="three-columns">
+            <P1GasChart Day="Today" Device="p1DeviceModel" View="View" />
+            <LiveChart Device="p1DeviceModel" />
+            <WaterChart Day="Today" Device="waterDeviceModel" View="View" />
+        </div>
+    </div>
+}
+
+<footer>
+    <img src="/appbyfex.png" />
+</footer>
+
+@code {
+
+
+    private DateTime Today = DateTime.Today;
+    private ChartBase.Views View = ChartBase.Views.Day;
+
+    private bool IsLoading = true;
+
+    private DeviceModel? p1DeviceModel;
+    private DeviceModel? waterDeviceModel;
+
+
+    protected async override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                var devices = await deviceRepository.GetDevices();
+                p1DeviceModel = devices.FirstOrDefault(d => d.ProductType == "HWE-P1");
+                waterDeviceModel = devices.FirstOrDefault(d => d.ProductType == "HWE-WTR");
+            }
+            finally
+            {
+                IsLoading = false;
+                StateHasChanged();
+            }
+        }
+    }
+}

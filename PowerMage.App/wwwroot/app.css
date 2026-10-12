@@ -359,3 +359,81 @@ th.small, td.small {
 .chart-tooltip.visible {
     opacity: 1;
 }
+
+/* Live */
+.layout {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0;
+}
+
+.full-width {
+    grid-column: 1 / -1;
+    gap: 0;
+}
+
+.three-columns {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0;
+}
+
+/* Live gauge */
+.gauge-track,
+.gauge-import,
+.gauge-export {
+    fill: none;
+    stroke-width: 14;
+    stroke-linecap: round;
+}
+
+.gauge-track {
+    stroke: var(--pico-muted-border-color, #e5e7eb);
+}
+
+.gauge-import {
+    stroke: var(--power-export);
+}
+
+.gauge-export {
+    stroke: var(--power-import);
+}
+
+.gauge-labels {
+    fill: var(--pico-muted-color, #64748b);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.gauge-needle {
+    transform-box: view-box;
+    transform-origin: 240px 230px;
+    transform: rotate(var(--needle-angle, 0deg));
+    transition: transform 700ms ease-in-out;
+}
+
+    .gauge-needle line {
+        stroke: var(--pico-color, #1e293b);
+        stroke-width: 5;
+        stroke-linecap: round;
+    }
+
+    .gauge-needle circle {
+        fill: var(--pico-color, #1e293b);
+        stroke: var(--pico-card-background-color, white);
+        stroke-width: 4;
+    }
+
+.gauge-value {
+    fill: var(--pico-color, #1e293b);
+    font-size: 26px;
+    font-weight: 700;
+}
+
+    .gauge-value.import-color {
+        fill: var(--power-import);
+    }
+    .gauge-value.export-color {
+        fill: var(--power-export);
+    }

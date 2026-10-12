@@ -372,6 +372,26 @@ public class DeviceRepository
 
         return totalKwh ?? 0;
     }
+    
+    public async Task<double> GetLatestActivePowerP1(int deviceId, CancellationToken cancellationToken = default)
+    {
+        using var connection = await sqlLiteService.CreateOpenConnection();
+        var totalKwh = await connection.ExecuteScalarAsync<double?>(
+            """
+                SELECT
+                    ActivePowerW
+                FROM DeviceP1Measurement
+                WHERE DeviceId = @DeviceId
+                ORDER BY Timestamp DESC
+                LIMIT 1;
+            """,
+            new
+            {
+                DeviceId = deviceId,
+            });
+
+        return totalKwh ?? 0;
+    }
 
     public async Task<double> GetTotalExportP1(int deviceId, DateTime from, DateTime to, CancellationToken cancellationToken = default)
     {

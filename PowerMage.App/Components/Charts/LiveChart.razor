@@ -1,0 +1,117 @@
+﻿@inherits ChartBase
+@implements IDisposable
+@inject DeviceRepository deviceRepository
+
+<div class="chartblock">
+    <div class="title">
+        @if (PowerWatts > 0)
+        {
+            <span class="import-color">
+                <ArrowDown />
+                Importing
+            </span>
+        }
+        else
+        {
+            <span class="export-color">
+                <ArrowUp />
+                Exporting
+            </span>
+        }
+        @if (isLoading)
+        {
+            <span aria-busy="true" class="chart-loader"></span>
+        }
+    </div>
+
+    @* Gauge *@
+
+    <svg viewBox="0 30 480 270"
+         role="img"
+         aria-label="@($"Power: {PowerWatts:N0} W")">
+
+        <path class="gauge-track"
+              d="M 80 230 A 160 160 0 0 1 400 230" />
+
+        <path class="gauge-import"
+              d="M 80 230 A 160 160 0 0 1 240 70" />
+
+        <path class="gauge-export"
+              d="M 240 70 A 160 160 0 0 1 400 230" />
+
+        <g class="gauge-labels">
+            <text x="240" y="50" text-anchor="middle">0 W</text>
+            <text x="50" y="258" text-anchor="start">-5000 W</text>
+            <text x="420" y="258" text-anchor="end">5000 W</text>
+        </g>
+
+        <g class="gauge-needle"
+           style="@($"--needle-angle: {NeedleAngle.ToString(System.Globalization.CultureInfo.InvariantCulture)}deg")">
+            <line x1="240" y1="230" x2="240" y2="95" />
+            <circle cx="240" cy="230" r="10" />
+        </g>
+
+        <text class="@(PowerWatts > 0 ? "gauge-value import-color" : "gauge-value export-color")"
+              x="240" y="290"
+              text-anchor="middle">@PowerWatts.ToString("N0") W</text>
+    </svg>
+
+</div>
+
+@code {
+    private readonly PeriodicTimer periodicTimer = new(TimeSpan.FromSeconds(15));
+    private bool isLoading = true;
+
+    private double PowerWatts { get; set; }
+
+    private double NeedleAngle => Math.Clamp(PowerWatts / 5000.0, -1.0, 1.0) * 90.0;
+
+    protected override void OnInitialized()
+    {
+        RunTimer();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await RefreshData();
+    }
+
+    protected async void RunTimer()
+    {
+        while (await periodicTimer.WaitForNextTickAsync())
+        {
+            await RefreshData();
+        }
+    }
+
+    private async Task RefreshData()
+    {
+        try
+        {
+            if (Device != null)
+            {
+                PowerWatts = await deviceRepository.GetLatestActivePowerP1(Device.Id);
+            }
+        }
+        finally
+        {
+            isLoading = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            periodicTimer.Dispose();
+        }
+    }
+}
