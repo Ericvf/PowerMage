@@ -31,9 +31,9 @@ else
         </div>
 
         <div class="three-columns">
-            <P1GasChart Day="Today" Device="p1DeviceModel" View="View" />
-            <LiveChart Device="p1DeviceModel" />
             <WaterChart Day="Today" Device="waterDeviceModel" View="View" />
+            <LiveChart P1Device="p1DeviceModel" WaterDevice="waterDeviceModel"/>
+            <P1GasChart Day="Today" Device="p1DeviceModel" View="View" />
         </div>
     </div>
 }

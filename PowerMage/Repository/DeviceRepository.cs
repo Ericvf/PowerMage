@@ -372,7 +372,7 @@ public class DeviceRepository
 
         return totalKwh ?? 0;
     }
-    
+
     public async Task<double> GetLatestActivePowerP1(int deviceId, CancellationToken cancellationToken = default)
     {
         using var connection = await sqlLiteService.CreateOpenConnection();
@@ -445,7 +445,7 @@ public class DeviceRepository
         var totalWater = await connection.ExecuteScalarAsync<double?>(
             """
                 SELECT
-                    COALESCE(MAX(TotalLiterM3) - MIN(TotalLiterM3), 0)
+                    COALESCE(MAX(TotalLiterM3) - MIN(TotalLiterM3), 0) * 1000
                 FROM DeviceWaterMeasurement
                 WHERE DeviceId = @DeviceId
                   AND Timestamp >= @From

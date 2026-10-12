@@ -437,3 +437,65 @@ th.small, td.small {
     .gauge-value.export-color {
         fill: var(--power-export);
     }
+
+/*
+.power-dashboard-svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+}*/
+
+.resource-gauge-svg .resource-track,
+.resource-gauge-svg .resource-progress {
+    fill: none;
+    stroke-width: 10;
+    transform: rotate(-90deg);
+    transform-origin: center;
+}
+
+.resource-gauge-svg .resource-track {
+    stroke: var(--pico-muted-border-color, #e5e7eb);
+}
+
+.resource-gauge-svg .resource-progress {
+    stroke-dasharray: 100;
+    stroke-dashoffset: calc(100 - var(--gauge-progress, 0));
+    stroke-linecap: round;
+    transition: stroke-dashoffset 700ms ease-in-out;
+}
+
+.water-gauge-svg .resource-progress {
+    stroke: var(--water-color);
+}
+
+.heat-gauge-svg .resource-progress {
+    stroke: var(--gas-color);
+}
+
+.resource-gauge-svg .resource-labels {
+    fill: var(--pico-muted-color, #64748b);
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.resource-gauge-svg .resource-value {
+    fill: var(--pico-color, #1e293b);
+    font-size: 19px;
+    font-weight: 700;
+}
+
+    .resource-gauge-svg .resource-value.water-color {
+        fill: var(--water-color);
+    }
+
+    .resource-gauge-svg .resource-value.gas-color {
+        fill: var(--gas-color);
+    }
+
+
+.resource-gauge-svg .resource-unit {
+    fill: var(--pico-muted-color, #64748b);
+    font-size: 11px;
+    font-weight: 500;
+}
