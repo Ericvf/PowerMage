@@ -26,6 +26,7 @@ public class DeviceRepository
                     DisplayName,
                     IpAddress,
                     Track, 
+                    Threshold,
                     [Order]
 
                 FROM Device
@@ -41,7 +42,28 @@ public class DeviceRepository
         return devices;
     }
 
-    public async Task UpdateDeviceOrder(int firstDeviceId,int firstOrder,int secondDeviceId,int secondOrder)
+    public async Task UpdateDeviceThreshold(DeviceModel device)
+    {
+        using var connection = await sqlLiteService.CreateOpenConnection();
+        using var transaction = connection.BeginTransaction();
+
+        await connection.ExecuteAsync(
+            """
+            UPDATE Device
+            SET [Threshold] = @Threshold
+            WHERE Id = @DeviceId
+            """,
+            new
+            {
+                DeviceId = device.Id,
+                device.Threshold
+            },
+            transaction);
+
+        transaction.Commit();
+    }
+
+    public async Task UpdateDeviceOrder(int firstDeviceId, int firstOrder, int secondDeviceId, int secondOrder)
     {
         using var connection = await sqlLiteService.CreateOpenConnection();
         using var transaction = connection.BeginTransaction();
@@ -161,6 +183,41 @@ public class DeviceRepository
             cancellationToken: cancellationToken);
 
         return await connection.QueryAsync<DeviceSKTEnergyAggregate>(command);
+    }
+
+    public async Task<IEnumerable<DeviceSKTThresholdModel>> GetSKTDeviceGreaterThanThreshold(CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            SELECT
+                d.Id AS DeviceId,
+                d.Serial,
+                d.ProductType,
+                d.ProductName,
+                d.DisplayName,
+                d.IpAddress,
+                de.Timestamp,
+                de.ActivePowerW AS ActualPowerW
+            FROM Device AS d
+            JOIN DeviceEnergy AS de
+                ON de.DeviceId = d.Id
+
+            WHERE d.Threshold > 0
+            AND de.Timestamp = (
+                SELECT MAX(de2.Timestamp)
+                FROM DeviceEnergy AS de2
+                WHERE de2.DeviceId = d.Id
+            )
+            AND de.ActivePowerW > d.Threshold
+            ORDER BY d."Order", d.Id;
+            """;
+
+        using var connection = await sqlLiteService.CreateOpenConnection();
+
+        var command = new CommandDefinition(
+            sql,
+            cancellationToken: cancellationToken);
+
+        return await connection.QueryAsync<DeviceSKTThresholdModel>(command);
     }
 
     public async Task<IEnumerable<DeviceP1EnergyAggregate>> GetDeviceP1EnergyAggregates(int deviceId, DateTime from, DateTime to, int timeUnit = 300, CancellationToken cancellationToken = default)
@@ -840,6 +897,16 @@ public class DeviceSKTEnergyAggregate
     public DateTime IntervalEnd => DateTimeOffset.FromUnixTimeSeconds(IntervalEndUnix).UtcDateTime;
 }
 
+
+public class DeviceSKTThresholdModel
+{
+    public int DeviceId { get; set; }
+    public string? DisplayName { get; set; }
+    public string? IPAddress { get; set; }
+    public long TimeStamp { get; set; }
+    public double? ActualPowerW { get; set; }
+}
+
 public class DeviceWaterAggregate
 {
     public long DeviceId { get; set; }
@@ -871,6 +938,7 @@ public class DeviceModel
     public required string DisplayName { get; set; }
     public required string IpAddress { get; set; }
     public int Track { get; set; } = 0;
+    public double Threshold { get; set; } = 0;
     public int Order { get; set; } = 0;
 }
 

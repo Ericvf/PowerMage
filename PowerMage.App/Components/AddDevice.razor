@@ -13,12 +13,14 @@
                 <tr>
                     <th scope="col">#</th>
                     <th scope="col">Serial</th>
-                    <th scope="col">Product Type</th>
+                    @* <th scope="col">Product Type</th> *@
                     <th scope="col">Product Name</th>
                     <th scope="col">Display Name</th>
                     <th scope="col">IP Address</th>
+                    <th scope="col" class="small">Threshold</th>
                     <th class="small" />
                     <th class="small" />
+
                 </tr>
             </thead>
             <tbody>
@@ -34,10 +36,16 @@
                         <tr>
                             <td>@device.Order</td>
                             <td>@device.Serial</td>
-                            <td>@device.ProductType</td>
+                            @* <td>@device.ProductType</td> *@
                             <td>@device.ProductName</td>
                             <td>@device.DisplayName</td>
                             <td>@device.IpAddress</td>
+                            <td class="small form-cell">
+                                <input type="number" class="threshold-input"
+                                       @bind="device.Threshold"
+                                       @bind:event="oninput"
+                                       @onblur="() => SaveThreshold(device)" />
+                            </td>
                             <td class="small">
                                 @if (i > 0)
                                 {
@@ -128,6 +136,11 @@
     private IEnumerable<DeviceModel> existingDevices = new List<DeviceModel>();
     private CancellationTokenSource? cancellationTokenSource;
     private NewDeviceModel newDevice = new();
+
+    private async Task SaveThreshold(DeviceModel device)
+    {
+        await deviceRepository.UpdateDeviceThreshold(device);
+    }
 
     public class NewDeviceModel
     {

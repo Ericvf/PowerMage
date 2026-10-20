@@ -166,6 +166,35 @@ public class SqlLiteService
 
         command.ExecuteNonQueryAsync();
 
+        using var checkCommand = connection.CreateCommand();
+        checkCommand.CommandText = "PRAGMA table_info(Device);";
+
+        var hasThreshold = false;
+
+        using (var reader = checkCommand.ExecuteReader())
+        {
+            while (reader.Read())
+            {
+                if (reader.GetString(1) == "Threshold")
+                {
+                    hasThreshold = true;
+                    break;
+                }
+            }
+        }
+
+        if (!hasThreshold)
+        {
+            using var alterCommand = connection.CreateCommand();
+            alterCommand.CommandText = """
+                ALTER TABLE Device
+                ADD COLUMN "Threshold" REAL NOT NULL DEFAULT 0;
+                """;
+
+            alterCommand.ExecuteNonQuery();
+        }
+
+
         return Task.CompletedTask;
     }
 }

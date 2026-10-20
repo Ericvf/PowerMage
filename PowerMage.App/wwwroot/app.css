@@ -330,6 +330,18 @@ th.small, td.small {
     padding: 0;
 }
 
+td.form-cell {
+    vertical-align: middle;
+}
+
+
+.form-cell input {
+    margin-block: 0;
+    height:2rem;
+    padding-left: 0.5rem;
+    padding-right:0;
+    text-align:center;
+}
 
 /* Tooltip */
 .chart-tooltip {
@@ -427,7 +439,7 @@ th.small, td.small {
 
 .gauge-value {
     fill: var(--pico-color, #1e293b);
-    font-size: 26px;
+    font-size: 2em;
     font-weight: 700;
 }
 
@@ -445,6 +457,10 @@ th.small, td.small {
     height: auto;
     overflow: visible;
 }*/
+
+.device-thresholds {
+    text-align: center;
+}
 
 .resource-gauge-svg .resource-track,
 .resource-gauge-svg .resource-progress {

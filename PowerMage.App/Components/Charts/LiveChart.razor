@@ -61,6 +61,18 @@
         </g>
     </svg>
 
+    @if (thresholdModels != null)
+    {
+        <div class="device-thresholds">
+            @foreach (var model in thresholdModels)
+            {
+                <div>
+                    <span>@model.DisplayName - </span>
+                    <span class="import-color"> @model.ActualPowerW?.ToString("N1") W</span>
+                </div>
+            }
+        </div>
+    }
 </div>
 
 @code {
@@ -72,6 +84,7 @@
     public DeviceModel? WaterDevice { get; set; }
 
     private readonly PeriodicTimer periodicTimer = new(TimeSpan.FromSeconds(60));
+    private IEnumerable<DeviceSKTThresholdModel>? thresholdModels;
     private bool isLoading = true;
     private bool isLiveMode = false;
 
@@ -130,6 +143,30 @@
             //         WaterLitres = measurement.TotalLiterM3 ?? 0;
             //     }
             // }
+
+            if (thresholdModels != null)
+            {
+                foreach (var thresholdModel in thresholdModels)
+                {
+                    if (thresholdModel.DisplayName != null)
+                    {
+                        // TODO: Fix dummy model 
+                        var device = new DeviceModel()
+                        {
+                            Id = thresholdModel.DeviceId,
+                            ProductName = thresholdModel.DisplayName,
+                            ProductType = thresholdModel.DisplayName,
+                            Serial = thresholdModel.DisplayName,
+                            DisplayName = thresholdModel.DisplayName,
+                            IpAddress = thresholdModel.IPAddress!
+                        };
+
+                        var measurement = await deviceClient.GetSKTMeasurement(device);
+                        if (measurement != null)
+                            thresholdModel.ActualPowerW = measurement.ActivePowerW;
+                    }
+                }
+            }
         }
         finally
         {
@@ -156,6 +193,8 @@
             {
                 WaterLitres = await deviceRepository.GetTotalWaterConsumed(WaterDevice.Id, DateTime.Today, DateTime.UtcNow);
             }
+
+            thresholdModels = await deviceRepository.GetSKTDeviceGreaterThanThreshold();
         }
         finally
         {
