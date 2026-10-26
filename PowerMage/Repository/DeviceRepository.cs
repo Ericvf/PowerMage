@@ -1,4 +1,5 @@
 ﻿using Dapper;
+using PowerMage.Api;
 using PowerMage.Services;
 
 namespace PowerMage.Repository;
@@ -797,6 +798,125 @@ public class DeviceRepository
 
         return water;
     }
+
+    public async Task AddEnphaseEnergy(EnphaseEnergyModel measurement)
+    {
+        using var connection = await sqlLiteService.CreateOpenConnection();
+
+        await connection.ExecuteAsync("""
+        INSERT INTO EnphaseEnergy (
+            Timestamp,
+            ProductionPowerW,
+            ConsumptionPowerW,
+            NetConsumptionPowerW,
+            TotalProductionKwh,
+            TotalConsumptionKwh,
+            TotalNetConsumptionKwh,
+            ProductionL1W,
+            ProductionL2W,
+            ProductionL3W,
+            ConsumptionL1W,
+            ConsumptionL2W,
+            ConsumptionL3W,
+            NetConsumptionL1W,
+            NetConsumptionL2W,
+            NetConsumptionL3W
+        )
+        VALUES (
+            @Timestamp,
+            @ProductionPowerW,
+            @ConsumptionPowerW,
+            @NetConsumptionPowerW,
+            @TotalProductionKwh,
+            @TotalConsumptionKwh,
+            @TotalNetConsumptionKwh,
+            @ProductionL1W,
+            @ProductionL2W,
+            @ProductionL3W,
+            @ConsumptionL1W,
+            @ConsumptionL2W,
+            @ConsumptionL3W,
+            @NetConsumptionL1W,
+            @NetConsumptionL2W,
+            @NetConsumptionL3W
+        );
+        """, measurement);
+    }
+
+    public async Task<IEnumerable<EnphaseEnergyAggregate>> GetEnphaseEnergyAggregates(
+        DateTime from,
+        DateTime to,
+        int timeUnit = 300,
+        CancellationToken cancellationToken = default)
+    {
+        using var connection = await sqlLiteService.CreateOpenConnection();
+
+        const string sql = """
+            WITH Bucketed AS (
+                SELECT
+                    Timestamp,
+                    (Timestamp - @From) / @TimeUnit AS Bucket,
+
+                    ProductionPowerW,
+                    ConsumptionPowerW,
+                    NetConsumptionPowerW,
+
+                    TotalProductionKwh,
+                    TotalConsumptionKwh,
+                    TotalNetConsumptionKwh
+
+                FROM EnphaseEnergy
+                WHERE Timestamp >= @From
+                  AND Timestamp < @To
+            ),
+            Aggregated AS (
+                SELECT
+                    Bucket,
+
+                    AVG(ProductionPowerW) AS ProductionPowerW,
+                    AVG(ConsumptionPowerW) AS ConsumptionPowerW,
+                    AVG(NetConsumptionPowerW) AS NetConsumptionPowerW,
+
+                    (MAX(TotalProductionKwh) - MIN(TotalProductionKwh))
+                        AS ProductionKwh,
+
+                    (MAX(TotalConsumptionKwh) - MIN(TotalConsumptionKwh))
+                        AS ConsumptionKwh,
+
+                    (MAX(TotalNetConsumptionKwh) - MIN(TotalNetConsumptionKwh))
+                        AS NetConsumptionKwh
+
+                FROM Bucketed
+                GROUP BY Bucket
+            )
+            SELECT
+                @From + Bucket * @TimeUnit AS IntervalStartUnix,
+                @From + (Bucket + 1) * @TimeUnit AS IntervalEndUnix,
+
+                ProductionPowerW,
+                ConsumptionPowerW,
+                NetConsumptionPowerW,
+
+                ProductionKwh,
+                ConsumptionKwh,
+                NetConsumptionKwh
+
+            FROM Aggregated
+            ORDER BY IntervalStartUnix;
+        """;
+
+        var command = new CommandDefinition(
+            sql,
+            new
+            {
+                From = new DateTimeOffset(from.ToUniversalTime()).ToUnixTimeSeconds(),
+                To = new DateTimeOffset(to.ToUniversalTime()).ToUnixTimeSeconds(),
+                TimeUnit = timeUnit
+            },
+            cancellationToken: cancellationToken);
+
+        return await connection.QueryAsync<EnphaseEnergyAggregate>(command);
+    }
 }
 
 public class DeviceEnergyModel
@@ -1034,4 +1154,22 @@ public class DeviceWaterMeasurementModel
     public double? TotalLiterM3 { get; set; }
     public double? ActiveLiterLpm { get; set; }
     public double? TotalLiterOffsetM3 { get; set; }
+}
+
+public class EnphaseEnergyAggregate
+{
+    public int DeviceId { get; set; }
+
+    public long IntervalStartUnix { get; set; }
+    public long IntervalEndUnix { get; set; }
+
+    // Gemiddeld vermogen binnen het interval (W)
+    public double? ProductionPowerW { get; set; }
+    public double? ConsumptionPowerW { get; set; }
+    public double? NetConsumptionPowerW { get; set; }
+
+    // Energieverandering binnen het interval (kWh)
+    public double? ProductionKwh { get; set; }
+    public double? ConsumptionKwh { get; set; }
+    public double? NetConsumptionKwh { get; set; }
 }

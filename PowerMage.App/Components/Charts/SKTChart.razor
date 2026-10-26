@@ -73,7 +73,8 @@
             .OrderBy(x => x.Minute)
             .ToArray();
         var chartType = View == Views.Day ? ChartTypes.Line : ChartTypes.Bar;
-        var series = new ChartSeries(chartType, chartPoints, "power", "W");
+        var chartUnit = View == Views.Day ? "W" : "Kwh";
+        var series = new ChartSeries(chartType, chartPoints, "power", chartUnit);
         return [series];
     }
 }

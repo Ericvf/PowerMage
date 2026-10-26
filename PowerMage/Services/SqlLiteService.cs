@@ -29,7 +29,7 @@ public class SqlLiteService
         return connection;
     }
 
-    public Task Initialize()
+    public async Task Initialize()
     {
         using var connection = CreateConnection();
         connection.Open();
@@ -163,8 +163,43 @@ public class SqlLiteService
                     ON DeviceEnergy (DeviceId, Timestamp);
             """;
 
+        await command.ExecuteNonQueryAsync();
 
-        command.ExecuteNonQueryAsync();
+
+        await using var enphasecommand = connection.CreateCommand();
+
+        enphasecommand.CommandText = """
+    
+                    CREATE TABLE IF NOT EXISTS EnphaseEnergy (
+                        Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        Timestamp INTEGER NOT NULL,
+    
+                        ProductionPowerW REAL,
+                        ConsumptionPowerW REAL,
+                        NetConsumptionPowerW REAL,
+    
+                        TotalProductionKwh REAL,
+                        TotalConsumptionKwh REAL,
+                        TotalNetConsumptionKwh REAL,
+    
+                        ProductionL1W REAL,
+                        ProductionL2W REAL,
+                        ProductionL3W REAL,
+    
+                        ConsumptionL1W REAL,
+                        ConsumptionL2W REAL,
+                        ConsumptionL3W REAL,
+    
+                        NetConsumptionL1W REAL,
+                        NetConsumptionL2W REAL,
+                        NetConsumptionL3W REAL
+                    );
+    
+                    CREATE INDEX IF NOT EXISTS IX_EnphaseEnergy_Timestamp
+                        ON EnphaseEnergy (Timestamp);
+        """;
+
+        await enphasecommand.ExecuteNonQueryAsync();
 
         using var checkCommand = connection.CreateCommand();
         checkCommand.CommandText = "PRAGMA table_info(Device);";
@@ -193,8 +228,5 @@ public class SqlLiteService
 
             alterCommand.ExecuteNonQuery();
         }
-
-
-        return Task.CompletedTask;
     }
 }

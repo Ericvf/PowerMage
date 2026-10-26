@@ -1,0 +1,79 @@
+﻿@inherits ChartBase
+@inject DeviceRepository deviceRepository
+
+<div class="chartblock">
+    <div class="title">
+        <span class="water-color">
+            <ArrowDown />
+            @Math.Round(totalWater, 2) <span class="small">L</span>
+        </span>
+    </div>
+
+    <h6>Enphase</h6>
+
+    @if (isLoading)
+    {
+        <p>Loading...</p>
+    }
+    else
+    {
+        <EnergyChart Day="Day" GetChartPoints="GetChartPoints" MomentsPerView="momentsPerView" XLabelFormat="@labelFormat" />
+    }
+</div>
+
+@code {
+
+    private IEnumerable<EnphaseEnergyAggregate> chartData = [];
+    private double totalWater;
+    private bool isLoading = true;
+    private DateTime to;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        isLoading = true;
+
+        try
+        {
+            to = Day.Date == DateTime.Today
+                ? DateTime.UtcNow
+                : Day.AddDays(daysPerView);
+
+            chartData = await deviceRepository.GetEnphaseEnergyAggregates(Day, to, timeUnit);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private ChartSeries[] GetChartPoints()
+    {
+        var startUnix = new DateTimeOffset(Day).ToUnixTimeSeconds();
+        var endUnix = new DateTimeOffset(to).ToUnixTimeSeconds();
+
+        var chartPoints1 = chartData
+            .Where(x =>
+                x.ProductionPowerW.HasValue &&
+                x.IntervalStartUnix >= startUnix &&
+                x.IntervalStartUnix < endUnix)
+            .Select(x => new ChartPoint((x.IntervalStartUnix - startUnix) / timeUnit, -x.ProductionPowerW!.Value, x.IntervalStartUnix))
+            .OrderBy(x => x.Minute)
+            .ToArray();
+
+        var chartPoints2 = chartData
+             .Where(x =>
+                 x.ConsumptionPowerW.HasValue &&
+                 x.IntervalStartUnix >= startUnix &&
+                 x.IntervalStartUnix < endUnix)
+             .Select(x => new ChartPoint((x.IntervalStartUnix - startUnix) / timeUnit, x.ConsumptionPowerW!.Value, x.IntervalStartUnix))
+             .OrderBy(x => x.Minute)
+             .ToArray();
+
+
+        var chartType = View == Views.Day ? ChartTypes.Line : ChartTypes.Bar;
+        var series1 = new ChartSeries(chartType, chartPoints1, "production", "Kwh");
+        var series2 = new ChartSeries(chartType, chartPoints2, "consumption", "Kwh");
+        return [series1, series2];
+    }
+}
+

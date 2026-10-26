@@ -3,6 +3,8 @@
     --power-export: #04DE71;
     --gas-color: #E60067;
     --water-color: #37BAFF;
+    --production-import-color: #ffd900;
+    --consumption-color: #2b5ec4;
 }
 
 h1:focus {
@@ -206,6 +208,37 @@ h1:focus {
     fill: url(#water-fill);
     stroke: none;
 }
+
+.consumption-line {
+    stroke: var(--consumption-color);
+    stroke-opacity: 0;
+    stroke-width: 1.5;
+    stroke-dasharray: 5 3;
+}
+
+.consumption-fill {
+    fill: var(--consumption-color);
+    fill-opacity: 0.4;
+    stroke: none;
+}
+
+.production-import-line {
+    stroke: var(--production-import-color);
+}
+
+.production-import-fill {
+    fill: var(--production-import-color);
+    fill-opacity: 0.4;
+    stroke: none;
+}
+
+.production-import-line {
+    stroke: var(--production-import-color);
+    stroke-opacity: 0;
+    stroke-width: 1.5;
+    stroke-dasharray: 5 3;
+}
+
 
 .chartblock .title {
     font-weight: 500;

@@ -94,59 +94,88 @@
                               stop-color="var(--water-color)"
                               stop-opacity="0.25" />
                     </linearGradient>
+                    <linearGradient id="consumption-fill"
+                                    x1="0"
+                                    y1="0"
+                                    x2="0"
+                                    y2="1">
+                        <stop offset="0%"
+                              stop-color="var(--consumption-color)"
+                              stop-opacity="0.75" />
+
+                        <stop offset="100%"
+                              stop-color="var(--consumption-color)"
+                              stop-opacity="0.25" />
+                    </linearGradient>
+                    <linearGradient id="production-import-fill" x1="0"
+                                    y1="1"
+                                    x2="0"
+                                    y2="0">
+                        <stop offset="0%"
+                              stop-color="var(--production-import-color)"
+                              stop-opacity="0.75" />
+
+                        <stop offset="100%"
+                              stop-color="var(--production-import-color)"
+                              stop-opacity="0.25" />
+                    </linearGradient>
+
                 </defs>
-                    @if (chartSeries != null)
+                @if (chartSeries != null)
+                {
+
+                    for (int i = 0; i < chartSeries.Length; i++)
                     {
+                        var chartPoints = chartSeries[i].points;
+                        var chartType = chartSeries[i].chartType;
+                        var colorClass = chartSeries[i].colorClass;
 
-                        for (int i = 0; i < chartSeries.Length; i++)
+                        if (chartType == ChartTypes.Line)
                         {
-                            var chartPoints = chartSeries[i].points;
-                            var chartType = chartSeries[i].chartType;
-                            var colorClass = chartSeries[i].colorClass;
-
-                            if (chartType == ChartTypes.Line)
+                            foreach (var segment in GetSegments(chartPoints))
                             {
-                                foreach (var segment in GetSegments(chartPoints))
+                                if (segment.Length >= 2)
                                 {
-                                    if (segment.Length >= 2)
+                                    var isNegative = segment.Any(x => x.Watts < 0);
+                                    if (isNegative)
                                     {
-                                        var isNegative = segment.Any(x => x.Watts < 0);
-                                        if (isNegative)
-                                        {
-                                            <path d="@BuildFilledPath(segment)" class="@($"{colorClass}-import-fill")" />
-                                            <path d="@BuildSmoothPath(segment)" class="@($"chart-line {colorClass}-import-line")" />
-                                        }
-                                        else
-                                        {
-                                            <path d="@BuildFilledPath(segment)" class="@($"{colorClass}-fill")" />
-                                            <path d="@BuildSmoothPath(segment)" class="@($"chart-line {colorClass}-line")" />
-                                        }
+                                        <path d="@BuildFilledPath(segment)" class="@($"{colorClass}-import-fill")" />
+                                        <path d="@BuildSmoothPath(segment)" class="@($"chart-line {colorClass}-import-line")" />
+                                    }
+                                    else
+                                    {
+                                        <path d="@BuildFilledPath(segment)" class="@($"{colorClass}-fill")" />
+                                        <path d="@BuildSmoothPath(segment)" class="@($"chart-line {colorClass}-line")" />
                                     }
                                 }
+                            }
 
+                            if (i == chartSeries.Length - 1)
+                            {
                                 foreach (var point in chartPoints)
                                 {
                                     var newValue = point.Watts < 0 ? MinValue : MaxValue;
                                     var tooltipColor = point.Watts < 0 ? $"powerexport" : colorClass;
 
-                                    <path d="@InvisibleBarPath(new ChartPoint(point.Minute, newValue, point.title), i, chartSeries.Length, 1)" style="color:transparent"
-                                      data-tooltip="@($"{F(point.Watts)} {chartSeries[i].suffix}")" data-tooltip-title="@($"{point.title}")" data-tooltip-color="@tooltipColor" />
-                                }
-                            }
-                            else if (chartType == ChartTypes.Bar)
-                            {
-                                foreach (var point in chartPoints)
-                                {
-                                    if (point.Watts == 0)
-                                        continue;
-
-                                    <path d="@BuildBarPath(point, i, chartSeries.Length)"
-                                        class="@($"{colorClass}-fill")"
-                                        data-tooltip="@($"{F(point.Watts)} {chartSeries[i].suffix}")" data-tooltip-title="@($"{point.title}")" data-tooltip-color="@colorClass" />
+                                    <path d="@InvisibleBarPath(new ChartPoint(point.Minute, newValue, point.title), i, 1, 1)" style="color:transparent"
+                                          data-tooltip="@($"{F(point.Watts)} {chartSeries[i].suffix}")" data-tooltip-title="@($"{point.title}")" data-tooltip-color="@tooltipColor" />
                                 }
                             }
                         }
+                        else if (chartType == ChartTypes.Bar)
+                        {
+                            foreach (var point in chartPoints)
+                            {
+                                if (point.Watts == 0)
+                                    continue;
+
+                                <path d="@BuildBarPath(point, i, chartSeries.Length)"
+                                      class="@($"{colorClass}-fill")"
+                                      data-tooltip="@($"{F(point.Watts)} {chartSeries[i].suffix}")" data-tooltip-title="@($"{point.title}")" data-tooltip-color="@colorClass" />
+                            }
+                        }
                     }
+                }
 
                
             </g>
@@ -497,7 +526,7 @@
 
     private IEnumerable<ChartPoint> GetLabelPoints()
     {
-        if (chartSeries == null)
+        if (chartSeries == null || chartSeries.Length == 0)
             return Enumerable.Empty<ChartPoint>();
 
         var maxLabels = Math.Min(MomentsPerView, 12);
